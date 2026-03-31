@@ -1,0 +1,86 @@
+[
+  {
+    "column": "loan_amount",
+    "issue_type": "Null Spike",
+    "severity": "HIGH",
+    "detail": "Null rate: 40% (4/10 rows)",
+    "sample_values": "[5000.0, 10000.0, 15000.0]",
+    "suggestions": [
+      {
+        "option": 1,
+        "action": "Implement data imputation for null values",
+        "confidence": 85,
+        "rationale": "Imputing with mean or median values can effectively reduce the null rate and maintain the overall distribution of loan amounts."
+      },
+      {
+        "option": 2,
+        "action": "Flag and investigate the source of null values",
+        "confidence": 65,
+        "rationale": "Identifying the root cause of the null spikes can help prevent future occurrences and improve data collection processes."
+      }
+    ]
+  },
+  {
+    "column": "employment_length",
+    "issue_type": "Null Spike",
+    "severity": "HIGH",
+    "detail": "Null rate: 40% (4/10 rows)",
+    "sample_values": "[2.0, 5.0, 3.0]",
+    "suggestions": [
+      {
+        "option": 1,
+        "action": "Impute missing values using the mean or median of available data",
+        "confidence": 85,
+        "rationale": "This approach fills nulls with a calculated representative value, reducing the null rate effectively."
+      },
+      {
+        "option": 2,
+        "action": "Flag records with null values for review or data correction",
+        "confidence": 65,
+        "rationale": "This allows for manual investigation and correction, ensuring data integrity."
+      }
+    ]
+  },
+  {
+    "column": "interest_rate",
+    "issue_type": "Statistical Outlier",
+    "severity": "HIGH",
+    "detail": "1 outlier(s) detected (values > 1 or < 0)",
+    "sample_values": "[0.05, 0.08, 0.06, 0.99, 0.07]",
+    "suggestions": [
+      {
+        "option": 1,
+        "action": "Remove the outlier",
+        "confidence": 85,
+        "rationale": "Eliminating the outlier will improve the statistical integrity of the interest rate data."
+      },
+      {
+        "option": 2,
+        "action": "Cap the outlier values at 1",
+        "confidence": 65,
+        "rationale": "Capping the outlier will retain more data while ensuring values stay within a valid range."
+      }
+    ]
+  },
+  {
+    "column": "issue_date",
+    "issue_type": "Format Inconsistency",
+    "severity": "MEDIUM",
+    "detail": "Mixed formats: 7 rows as YYYY-MM-DD, 3 rows as MM/DD/YYYY",
+    "sample_values": "['2023-01-01', '01/02/2023', '2023-03-01', '2023-04-01', '04/05/2023']",
+    "suggestions": [
+      {
+        "option": 1,
+        "action": "Convert all dates to YYYY-MM-DD format",
+        "confidence": 85,
+        "rationale": "This approach standardizes the date format, ensuring consistency across all records."
+      },
+      {
+        "option": 2,
+        "action": "Convert all dates to MM/DD/YYYY format",
+        "confidence": 65,
+        "rationale": "This option may accommodate users familiar with the MM/DD/YYYY format, but introduces a risk of confusion if not all data sources align."
+      }
+    ]
+  }
+]

@@ -280,6 +280,43 @@ git push
 
 ---
 
+## JSON Format Agreement
+
+All 3 files communicate through JSON. 
+If you change the JSON structure, notify the next person immediately.
+
+issues_output.json (detector.py → suggester.py)
+{
+  "column": "loan_amnt",
+  "issue_type": "Null Spike",
+  "severity": "HIGH",
+  "detail": "...",
+  "sample_values": "..."
+}
+
+issues_with_suggestions.json (suggester.py → dashboard.py)
+{
+  "column": "loan_amnt",
+  "issue_type": "Null Spike",
+  "severity": "HIGH",
+  "detail": "...",
+  "sample_values": "...",
+  "priority_score": 8,
+  "impact_score": {...},
+  "suggestions": [
+    {
+      "option": 1,
+      "action": "...",
+      "confidence": 85,
+      "rationale": "...",
+      "pyspark_code": "..."
+    }
+  ]
+}
+
+
+---
+
 ### File Assignments
 
 | Person | File to Edit |

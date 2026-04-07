@@ -10,13 +10,13 @@
         "option": 1,
         "action": "Implement data imputation for null values",
         "confidence": 85,
-        "rationale": "Imputing with mean or median values can effectively reduce the null rate and maintain the overall distribution of loan amounts."
+        "rationale": "This approach helps to maintain data continuity and reduces the null rate effectively."
       },
       {
         "option": 2,
-        "action": "Flag and investigate the source of null values",
+        "action": "Conduct a root cause analysis to identify source of nulls",
         "confidence": 65,
-        "rationale": "Identifying the root cause of the null spikes can help prevent future occurrences and improve data collection processes."
+        "rationale": "Understanding the cause can help in addressing the underlying issue to prevent future nulls."
       }
     ]
   },
@@ -29,15 +29,15 @@
     "suggestions": [
       {
         "option": 1,
-        "action": "Impute missing values using the mean or median of available data",
+        "action": "Impute missing values with the median of the available data",
         "confidence": 85,
-        "rationale": "This approach fills nulls with a calculated representative value, reducing the null rate effectively."
+        "rationale": "Using the median ensures that the imputed values are less affected by outliers and reflects the central tendency of employment lengths."
       },
       {
         "option": 2,
-        "action": "Flag records with null values for review or data correction",
+        "action": "Flag and analyze rows with missing values for further investigation",
         "confidence": 65,
-        "rationale": "This allows for manual investigation and correction, ensuring data integrity."
+        "rationale": "This approach allows for understanding the underlying reasons for missing data, which can help in future data collection improvements."
       }
     ]
   },
@@ -50,15 +50,15 @@
     "suggestions": [
       {
         "option": 1,
-        "action": "Remove the outlier",
+        "action": "Remove the outlier from the dataset",
         "confidence": 85,
-        "rationale": "Eliminating the outlier will improve the statistical integrity of the interest rate data."
+        "rationale": "This approach ensures that the data remains within the expected range, improving overall data quality."
       },
       {
         "option": 2,
-        "action": "Cap the outlier values at 1",
+        "action": "Cap the outlier to the maximum allowable value",
         "confidence": 65,
-        "rationale": "Capping the outlier will retain more data while ensuring values stay within a valid range."
+        "rationale": "Capping preserves the data point while correcting its value, which may be useful in maintaining data size."
       }
     ]
   },
@@ -71,15 +71,15 @@
     "suggestions": [
       {
         "option": 1,
-        "action": "Convert all dates to YYYY-MM-DD format",
+        "action": "Standardize all dates to YYYY-MM-DD format",
         "confidence": 85,
-        "rationale": "This approach standardizes the date format, ensuring consistency across all records."
+        "rationale": "This format is ISO compliant and widely used, ensuring consistency across the dataset."
       },
       {
         "option": 2,
         "action": "Convert all dates to MM/DD/YYYY format",
         "confidence": 65,
-        "rationale": "This option may accommodate users familiar with the MM/DD/YYYY format, but introduces a risk of confusion if not all data sources align."
+        "rationale": "This format may be more familiar to users in certain regions, though it is less standardized."
       }
     ]
   }

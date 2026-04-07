@@ -113,7 +113,9 @@ Each file has a clear input and output. **You only need to work on your assigned
 
 ---
 
-## What Each Person Needs to Do This Week
+## What Each Person Needs to Do
+
+### Week 1 — Upgrade Skeleton
 
 **LLM Engineer (Most urgent)**
 - Upgrade `suggester.py` from single GPT call → 2-step agent
@@ -141,6 +143,74 @@ Each file has a clear input and output. **You only need to work on your assigned
 - Update README with architecture description
 - Draft demo narrative (the "story" we tell evaluators)
 - Research: what do companies like Monte Carlo, Databricks do? (for opening pitch)
+
+---
+
+### Week 2 — Real Datasets + Outcome Tracking + Databricks
+
+**LLM Engineer**
+- Add Before/After quality score tracking to suggester.py
+- Implement simple Feedback Loop (pass historical decisions back to LLM context)
+- Test prompt stability across different issue types
+
+**Dashboard Developer**
+- Replace Quality Score placeholder with real Before/After numbers
+- Add Outcome Panel (remediation history log)
+- Add Before/After comparison display per issue
+
+**Data Engineer**
+- Switch to full Lending Club dataset (2.5M rows)
+- Set up Databricks environment with Carlson IT
+- Upload dataset to S3/Azure Blob
+- Test full pipeline on Databricks with real data
+
+**Integration & QA**
+- Full end-to-end test with real dataset
+- Test edge cases: empty data, API failure, all nulls
+- Ensure JSON format stays consistent across all 3 files
+- Document any bugs found and fixes applied
+
+**Business & Presentation**
+- Finalize demo narrative and story line
+- Prepare answers for likely evaluator questions
+- Start drafting 2-page handout
+
+---
+
+### Week 3 — Live Demo + Final Polish
+
+**LLM Engineer**
+- Finalize feedback loop
+- Final prompt tuning and stability testing
+
+**Dashboard Developer**
+- Add Live Injection Demo button
+- Add Trend Analysis chart (quality score over time)
+- Final UI polish
+
+**Data Engineer**
+- Confirm Databricks pipeline is stable
+- Add Synthetic Drift Injection for demo purposes
+
+**Integration & QA**
+- Full demo run-through testing
+- Stress test: make sure nothing breaks during live demo
+- Prepare fallback plan if GPT API fails on demo day
+
+**Business & Presentation**
+- Finalize 2-page handout (PDF)
+- Complete GitHub README and documentation
+- Lead demo rehearsal with full team
+
+---
+
+### Week 4 — Demo Rehearsal + Final Cleanup
+
+**All team members**
+- Demo rehearsal (at least 2 full run-throughs)
+- Final GitHub cleanup and documentation
+- Prepare name tags for event day
+- Final bug fixes and edge case handling
 
 ---
 
@@ -188,6 +258,13 @@ No fix is ever executed automatically. Every suggestion requires analyst approva
 
 **Why grounded prompts?**
 LLM only sees concrete statistics (null rate %, sample values, column type). It cannot hallucinate because it has no room to speculate — every suggestion must be based on the numbers provided.
+
+
+**Why track outcomes?**
+After each fix is approved and executed, the system records 
+the Before/After quality score. These results feed back into 
+the LLM context, so future suggestions improve over time 
+based on what actually worked.
 
 ---
 

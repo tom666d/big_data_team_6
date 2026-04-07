@@ -224,6 +224,95 @@ Week 4          → Demo rehearsal + Handout + GitHub cleanup
 ```
 
 ---
+## How to Use GitHub 
+
+### First Time Setup
+
+**Step 1: Clone the repo (download to your computer)**
+```bash
+git clone https://github.com/tom666d/big_data_team_6.git
+cd big_data_team_6
+```
+
+**Step 2: Install dependencies**
+```bash
+pip install pyspark openai streamlit pandas python-dotenv
+```
+
+**Step 3: Create your `.env` file**
+- Create a new file called `.env` in the root folder
+- Add this line (Tom will send you the key privately):
+- OPENAI_API_KEY=your_key_here
+**Step 4: Test that everything works**
+```bash
+python src/detection/detector.py
+python src/llm/suggester.py
+streamlit run src/dashboard/dashboard.py
+```
+---
+
+### Daily Workflow
+
+**Every time you start working:**
+```bash
+git pull
+```
+This gets the latest version from GitHub before you start.
+
+**Every time you finish working:**
+```bash
+git add .
+git commit -m "describe what you did"
+git push
+```
+
+---
+
+### Rules
+
+- ✅ Only edit your assigned file
+- ✅ Always `git pull` before you start
+- ✅ Test on your local machine before pushing
+- ✅ Write a clear commit message (e.g. `"Add priority score to dashboard"`)
+- ❌ Never edit someone else's file
+- ❌ Never push broken code
+- ❌ Never share the API key in group chats
+
+---
+
+### File Assignments
+
+| Person | File to Edit |
+|--------|-------------|
+| LLM Engineer | `src/llm/suggester.py` |
+| Dashboard Developer | `src/dashboard/dashboard.py` |
+| Data Engineer | `src/detection/detector.py` |
+| Integration & QA | All files (testing only) |
+| Business & Presentation | `README.md`, docs |
+
+---
+
+### If Something Goes Wrong
+
+**Accidentally edited the wrong file?**
+```bash
+git checkout -- filename.py
+```
+This reverts the file back to the last saved version.
+
+**Not sure what you changed?**
+```bash
+git status
+git diff
+```
+
+**Conflict when pushing?**
+```bash
+git pull
+git push
+```
+
+---
 
 ## How to Run (Local)
 

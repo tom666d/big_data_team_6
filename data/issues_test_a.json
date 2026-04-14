@@ -1,0 +1,23 @@
+[
+  {
+    "column": "annual_income",
+    "issue_type": "Null Spike",
+    "severity": "MEDIUM",
+    "detail": "Null rate: 20% (2/10 rows)",
+    "sample_values": "[45000.0, 52000.0, 61000.0]"
+  },
+  {
+    "column": "debt_ratio",
+    "issue_type": "Statistical Outlier",
+    "severity": "HIGH",
+    "detail": "2 outlier(s) detected (values > 1 or < 0)",
+    "sample_values": "[0.2, 0.35, 1.8, -0.1, 0.4]"
+  },
+  {
+    "column": "application_date",
+    "issue_type": "Format Inconsistency",
+    "severity": "LOW",
+    "detail": "Mixed formats: 8 rows as YYYY-MM-DD, 2 rows as MM/DD/YYYY",
+    "sample_values": "['2023-01-01', '2023-01-02', '01/03/2023']"
+  }
+]

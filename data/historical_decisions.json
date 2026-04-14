@@ -1,0 +1,44 @@
+{
+  "Null Spike": [
+    {
+      "column": "loan_amount",
+      "chosen_option": 1,
+      "chosen_action": "Impute Missing Values with Mean",
+      "chosen_rationale": "Using the mean of existing loan_amount values for imputation is a widely accepted practice that preserves data distribution.",
+      "chosen_caveats": "This method assumes that missing values are not significantly different from other data points, which may not always hold true.",
+      "chosen_confidence": 85,
+      "detail_summary": "Null rate: 40% (4/10 rows)"
+    },
+    {
+      "column": "employment_length",
+      "chosen_option": 1,
+      "chosen_action": "Impute Missing Values with Mean",
+      "chosen_rationale": "Using the mean of existing employment_length values is a standard practice that can help preserve the distribution of the data.",
+      "chosen_caveats": "This method assumes that missing values are similar to existing values, which may not always hold true.",
+      "chosen_confidence": 85,
+      "detail_summary": "Null rate: 40% (4/10 rows)"
+    }
+  ],
+  "Statistical Outlier": [
+    {
+      "column": "interest_rate",
+      "chosen_option": 1,
+      "chosen_action": "Cap Outlier Values",
+      "chosen_rationale": "This approach constrains extreme values to a realistic range, preserving overall data integrity.",
+      "chosen_caveats": "Assumes that values outside of the 0-1 range are indeed erroneous and should be capped.",
+      "chosen_confidence": 85,
+      "detail_summary": "1 outlier(s) detected (values > 1 or < 0)"
+    }
+  ],
+  "Format Inconsistency": [
+    {
+      "column": "issue_date",
+      "chosen_option": 1,
+      "chosen_action": "Standardize Date Format to YYYY-MM-DD",
+      "chosen_rationale": "This approach uses a uniform date format which is widely accepted and reduces future inconsistencies.",
+      "chosen_caveats": "This may result in data loss if any dates are invalid or cannot be parsed properly.",
+      "chosen_confidence": 85,
+      "detail_summary": "Mixed formats: 7 rows as YYYY-MM-DD, 3 rows as MM/DD/YYYY"
+    }
+  ]
+}

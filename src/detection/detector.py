@@ -8,10 +8,9 @@ import json
 spark = SparkSession.builder \
     .appName("DataQualityDetector") \
     .getOrCreate()
-spark.sparkContext.setLogLevel("ERROR")
 
 # ── Load data ────────────────────────────────────────────────────────────────
-df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+df = spark.table("workspace.team6.lendingclub_full")
 print("✅ Step 1: Data loaded successfully")
 
 total = df.count()
@@ -152,16 +151,27 @@ quality_score = max(0, min(100, raw_score))
 
 print(f"\n📊 Data Quality Score: {quality_score}/100  |  {len(issues)} issue(s) found")
 
-# ── Output ───────────────────────────────────────────────────────────────────
+# --- Output -----------------------------------
+
 print(f"\n✅ Detection complete — {len(issues)} issue(s) found")
 for idx, issue in enumerate(issues):
-    print(f"  Issue {idx+1}: [{issue['severity']}] {issue['column']} — {issue['issue_type']}")
+    print(f" Issue {idx+1}: [{issue['severity']}] {issue['column']} - {issue['issue_type']}")
 
-with open("data/issues_output.json", "w") as f:
+from pathlib import Path
+import os
+
+repo_root = Path(os.getcwd())
+
+issues_path = repo_root / "data" / "issues_output.json"
+score_path  = repo_root / "data" / "quality_score.json"
+
+issues_path.parent.mkdir(parents=True, exist_ok=True)
+
+with open(issues_path, "w") as f:
     json.dump(issues, f, indent=2, ensure_ascii=False)
 
-with open("data/quality_score.json", "w") as f:
+with open(score_path, "w") as f:
     json.dump({"quality_score": quality_score}, f, indent=2)
 
 print("\n✅ issues_output.json saved")
-spark.stop()
+print("✅ quality_score.json saved")

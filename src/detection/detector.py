@@ -157,20 +157,11 @@ print(f"\n✅ Detection complete — {len(issues)} issue(s) found")
 for idx, issue in enumerate(issues):
     print(f" Issue {idx+1}: [{issue['severity']}] {issue['column']} - {issue['issue_type']}")
 
-from pathlib import Path
-import os
 
-repo_root = Path(os.getcwd())
+with open("/Volumes/workspace/team6/data/issues_output.json", "w") as f:
+    json.dump(issues, f, indent=2)
 
-issues_path = repo_root / "data" / "issues_output.json"
-score_path  = repo_root / "data" / "quality_score.json"
-
-issues_path.parent.mkdir(parents=True, exist_ok=True)
-
-with open(issues_path, "w") as f:
-    json.dump(issues, f, indent=2, ensure_ascii=False)
-
-with open(score_path, "w") as f:
+with open("/Volumes/workspace/team6/data/quality_score.json", "w") as f:
     json.dump({"quality_score": quality_score}, f, indent=2)
 
 print("\n✅ issues_output.json saved")

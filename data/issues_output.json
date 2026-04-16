@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "column": "int_rate",
+    "issue_type": "Statistical Outlier",
+    "severity": "MEDIUM",
+    "detail": "1677 outlier(s) (1.7% of rows). IQR bounds: [1.43, 22.07]",
+    "sample_values": "[22.45, 24.24, 23.13, 26.06, 22.45]"
+  }
+]

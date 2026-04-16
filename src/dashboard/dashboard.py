@@ -24,7 +24,7 @@ except FileNotFoundError:
 st.divider()
 col1, col2, col3, col4 = st.columns(4) # Column added
 col1.metric("Issues Detected", len(issues))
-col2.metric("High Severity", sum(1 for i in issues if i["severity"] == "HIGH"))
+col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
 
 # ── [UPDATE] Quality metrics added ──────────────────────────────────
 col3.metric("Avg Quality Score (Before)", "65%", "-5%") 
@@ -39,29 +39,29 @@ if "decisions" not in st.session_state:
 st.subheader("📋 Detected Issues")
 
 for i, issue in enumerate(issues):
-    color = "🔴" if issue["severity"] == "HIGH" else "🟡"
+    color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
     
     # [UPDATE] Display priority score in the header
-    priority = issue.get("priority_score", "N/A")
+    priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
     with st.expander(
-        f"{color} [P{priority}] {issue['column']} — {issue['issue_type']}",
+        f"{color} [P{priority}] {issue['input']['column']} — {issue['input']['issue_type']}",
         expanded=True
     ):
         col_info1, col_info2 = st.columns(2)
         with col_info1:
-            st.write(f"**Detail:** {issue['detail']}")
-            st.write(f"**Sample Values:** `{issue['sample_values']}`")
+            st.write(f"**Detail:** {issue['input']['detail']}")
+            st.write(f"**Sample Values:** `{issue['input']['sample_values']}`")
         with col_info2:
             # [UPDATE] Impact score analysis section added
             st.write("**Impact Analysis:**")
-            impact = issue.get("impact_score", {})
-            st.caption(f"- Business Risk: {impact.get('business_risk', 'Medium')}")
-            st.caption(f"- Downstream Reach: {impact.get('reach', 'High')}")
+            impact = issue.get("diagnosis", {})
+            st.caption(f"- Business Risk: {impact.get('business_impact', 'N/A')}")
+            st.caption(f"- Downstream Reach: {impact.get('affected_percent', 'N/A')}")
 
         st.divider()
         st.write("**💡 AI Suggestions:**")
 
-        for s in issue["suggestions"]:
+        for s in issue["remediation"]["suggestions"]:
             # [UPDATE] Adjust layout to accommodate PySpark code and rationale
             st.write(f"### Option {s['option']} (Confidence: {s['confidence']}%)")
             
@@ -80,7 +80,7 @@ for i, issue in enumerate(issues):
                     key=f"accept_{i}_{s['option']}",
                     use_container_width=True
                 ):
-                    st.session_state.decisions[issue["column"]] = {
+                    st.session_state.decisions[issue["input"]["column"]] = {
                         "action": s["action"],
                         "code": s.get("pyspark_code", ""),
                         "confidence": s["confidence"]

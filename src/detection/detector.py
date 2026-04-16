@@ -3,14 +3,24 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, regexp_extract, when, trim
 from pyspark.sql.types import DoubleType
 import json
+import os
+
+
 
 # ── Start Spark ──────────────────────────────────────────────────────────────
 spark = SparkSession.builder \
     .appName("DataQualityDetector") \
     .getOrCreate()
 
+
 # ── Load data ────────────────────────────────────────────────────────────────
-df = spark.table("workspace.team6.lendingclub_full")
+LOCAL_MODE = not os.path.exists("/dbfs")
+
+if LOCAL_MODE:
+    df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+else:
+    df = spark.table("workspace.team6.lendingclub_full")
+
 print("✅ Step 1: Data loaded successfully")
 
 total = df.count()
@@ -160,13 +170,22 @@ for idx, issue in enumerate(issues):
     print(f" Issue {idx+1}: [{issue['severity']}] {issue['column']} - {issue['issue_type']}")
 
 
-with open("/Volumes/workspace/team6/data/issues_output.json", "w") as f:
+if LOCAL_MODE:
+    output_issues = "data/issues_output.json"
+    output_quality = "data/quality_score.json"
+    output_shape = "data/df_shape.json"
+else:
+    output_issues = "/Volumes/workspace/team6/data/issues_output.json"
+    output_quality = "/Volumes/workspace/team6/data/quality_score.json"
+    output_shape = "/Volumes/workspace/team6/data/df_shape.json"
+
+with open(output_issues, "w") as f:
     json.dump(issues, f, indent=2)
 
-with open("/Volumes/workspace/team6/data/quality_score.json", "w") as f:
+with open(output_quality, "w") as f:
     json.dump({"quality_score": quality_score}, f, indent=2)
 
-with open("/Volumes/workspace/team6/data/df_shape.json", "w") as f:
+with open(output_shape, "w") as f:
     json.dump({"total_rows": total, "total_columns": len(df.columns)}, f, indent=2)
 
 print("\n✅ issues_output.json saved")

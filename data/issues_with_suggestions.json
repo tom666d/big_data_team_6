@@ -1,162 +1,42 @@
 [
   {
     "input": {
-      "column": "loan_amount",
-      "issue_type": "Null Spike",
-      "severity": "HIGH",
-      "detail": "Null rate: 40% (4/10 rows)",
-      "sample_values": "[5000.0, 10000.0, 15000.0]"
-    },
-    "diagnosis": {
-      "root_cause": "Inconsistent data entry processes or system integration failures could be leading to missing loan_amount values.",
-      "business_impact": "High null rates hinder accurate financial analytics and reporting, potentially skewing forecasts and decision-making models.",
-      "priority_score": 8,
-      "affected_percent": 40.0
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Impute Missing Values with Mean",
-          "confidence": 85,
-          "rationale": "Using the mean of existing loan_amount values for imputation is a widely accepted practice that preserves data distribution.",
-          "caveats": "This method assumes that missing values are not significantly different from other data points, which may not always hold true.",
-          "pyspark_code": "mean_value = df.agg({'loan_amount': 'mean'}).collect()[0][0]\n\ndf = df.fillna({'loan_amount': mean_value})"
-        },
-        {
-          "option": 2,
-          "action": "Drop Rows with Missing Values",
-          "confidence": 65,
-          "rationale": "Dropping rows with null values might be effective if the dataset is large enough to withstand loss of data integrity.",
-          "caveats": "This approach risks losing potentially useful data and may not be suitable if many rows contain null values.",
-          "pyspark_code": "df = df.na.drop(subset=['loan_amount'])"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 70.0,
-      "after": 80.0,
-      "delta": 10.0
-    }
-  },
-  {
-    "input": {
-      "column": "employment_length",
-      "issue_type": "Null Spike",
-      "severity": "HIGH",
-      "detail": "Null rate: 40% (4/10 rows)",
-      "sample_values": "[2.0, 5.0, 3.0]"
-    },
-    "diagnosis": {
-      "root_cause": "Inadequate data collection processes may have resulted in missing employment length information for a significant number of records, indicating possible issues with data entry or data extraction from source systems.",
-      "business_impact": "The high null rate in employment length could lead to biased analysis, affecting hiring trends and risk assessments in predictive modeling and reporting.",
-      "priority_score": 8,
-      "affected_percent": 40.0
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Impute Missing Values with Mean",
-          "confidence": 85,
-          "rationale": "Using the mean of existing employment_length values is a standard practice that can help preserve the distribution of the data.",
-          "caveats": "This method assumes that missing values are similar to existing values, which may not always hold true.",
-          "pyspark_code": "df = df.na.fill({'employment_length': df.select('employment_length').groupBy().avg().first()[0]})"
-        },
-        {
-          "option": 2,
-          "action": "Impute using Median",
-          "confidence": 65,
-          "rationale": "Imputing with the median can be more robust in the presence of outliers, providing a reasonable estimate for missing data.",
-          "caveats": "This method assumes that the distribution is not heavily skewed and that missing values do not differ significantly from the median.",
-          "pyspark_code": "median_value = df.approxQuantile('employment_length', [0.5], 0.01)[0]; df = df.na.fill({'employment_length': median_value})"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 70.0,
-      "after": 80.0,
-      "delta": 10.0
-    }
-  },
-  {
-    "input": {
-      "column": "interest_rate",
+      "column": "int_rate",
       "issue_type": "Statistical Outlier",
-      "severity": "HIGH",
-      "detail": "1 outlier(s) detected (values > 1 or < 0)",
-      "sample_values": "[0.05, 0.08, 0.06, 0.99, 0.07]"
-    },
-    "diagnosis": {
-      "root_cause": "The outlier may be due to a data entry error or incorrect data transformation during processing, leading to unrealistic interest rate values.",
-      "business_impact": "This could skew financial analyses and risk assessments, resulting in misleading reporting and potentially poor business decisions.",
-      "priority_score": 7,
-      "affected_percent": 10.0
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Cap Outlier Values",
-          "confidence": 85,
-          "rationale": "This approach constrains extreme values to a realistic range, preserving overall data integrity.",
-          "caveats": "Assumes that values outside of the 0-1 range are indeed erroneous and should be capped.",
-          "pyspark_code": "df = df.withColumn('interest_rate', F.when((df['interest_rate'] < 0) | (df['interest_rate'] > 1), F.when(df['interest_rate'] < 0, 0).otherwise(1)).otherwise(df['interest_rate']))"
-        },
-        {
-          "option": 2,
-          "action": "Remove Outlying Rows",
-          "confidence": 65,
-          "rationale": "Removing rows with outlier values can clean the dataset for more accurate analysis.",
-          "caveats": "This could result in data loss, especially if outliers are not abundant, which might affect overall datasets.",
-          "pyspark_code": "df = df.filter((df['interest_rate'] >= 0) & (df['interest_rate'] <= 1))"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 70.0,
-      "after": 72.5,
-      "delta": 2.5
-    }
-  },
-  {
-    "input": {
-      "column": "issue_date",
-      "issue_type": "Format Inconsistency",
       "severity": "MEDIUM",
-      "detail": "Mixed formats: 7 rows as YYYY-MM-DD, 3 rows as MM/DD/YYYY",
-      "sample_values": "['2023-01-01', '01/02/2023', '2023-03-01', '2023-04-01', '04/05/2023']"
+      "detail": "1677 outlier(s) (1.7% of rows). IQR bounds: [1.43, 22.07]",
+      "sample_values": "[22.45, 24.24, 23.13, 26.06, 22.45]"
     },
     "diagnosis": {
-      "root_cause": "Data entry inconsistencies from multiple sources, or lack of a standardized format guideline during data collection.",
-      "business_impact": "Inconsistent date formats can lead to errors in data aggregation, reporting delays, and unreliable analytics outcomes, impacting decision-making processes.",
-      "priority_score": 6,
-      "affected_percent": 30.0
+      "root_cause": "The outliers in the interest rate column may originate from incorrect data entry or exceptional cases not aligned with typical lending practices.",
+      "business_impact": "These outliers can skew analytical insights, leading to inaccurate financial modeling and misinformed business decisions.",
+      "priority_score": 7,
+      "affected_percent": 16770.0
     },
     "remediation": {
       "suggestions": [
         {
           "option": 1,
-          "action": "Standardize Date Format to YYYY-MM-DD",
+          "action": "Cap Outliers Based on IQR",
           "confidence": 85,
-          "rationale": "This approach uses a uniform date format which is widely accepted and reduces future inconsistencies.",
-          "caveats": "This may result in data loss if any dates are invalid or cannot be parsed properly.",
-          "pyspark_code": "df = df.withColumn('issue_date', to_date(col('issue_date'), 'yyyy-MM-dd')).na.fill({'issue_date': '1970-01-01'})"
+          "rationale": "Capping outliers to the IQR bounds preserves the dataset while addressing statistical anomalies.",
+          "caveats": "Assumes that the IQR is an appropriate measure for this specific dataset.",
+          "pyspark_code": "df = df.withColumn('int_rate', F.when(df.int_rate < 1.43, 1.43).when(df.int_rate > 22.07, 22.07).otherwise(df.int_rate))"
         },
         {
           "option": 2,
-          "action": "Convert Mixed Formats to Timestamp",
+          "action": "Remove Outliers",
           "confidence": 65,
-          "rationale": "Converting dates to timestamps helps to handle mixed formats but requires careful parsing.",
-          "caveats": "Assumes all dates are valid and will lead to nulls if parsing fails, which may require additional handling.",
-          "pyspark_code": "from pyspark.sql.functions import when, to_timestamp\n\ndf = df.withColumn('issue_date', when(col('issue_date').rlike('\\d{4}-\\d{2}-\\d{2}'), to_timestamp(col('issue_date'), 'yyyy-MM-dd'))\n                                 .otherwise(to_timestamp(col('issue_date'), 'MM/dd/yyyy')))"
+          "rationale": "Removing outliers can enhance the analytical integrity of the dataset but may lead to loss of valuable data.",
+          "caveats": "Potentially removes significant data points that could represent valid but extreme cases.",
+          "pyspark_code": "df = df.filter((df.int_rate >= 1.43) & (df.int_rate <= 22.07))"
         }
       ]
     },
     "quality_score": {
-      "before": 70.0,
-      "after": 77.5,
-      "delta": 7.5
+      "before": -4092.5,
+      "after": 100.0,
+      "delta": 4192.5
     }
   }
 ]

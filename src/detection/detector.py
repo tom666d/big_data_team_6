@@ -63,7 +63,7 @@ for col_name in NULL_COLS:
     else:
         print(f"  ✅ {col_name}: null rate = {null_rate:.0%}, within threshold")
 
-# ── Detection 2: Statistical Outlier (3×IQR, flag threshold: >5%) ────────────
+# ── Detection 2: Statistical Outlier (1.5×IQR, flag threshold: >1%) ────────────
 print("\n🔍 Detecting Statistical Outliers (IQR)...")
 
 NUMERIC_COLS = [
@@ -98,7 +98,7 @@ for col_name in NUMERIC_COLS:
 
     outlier_rate = outlier_count / total
 
-    if outlier_rate > 0.05:  # raised from 0.01 → 0.05
+    if outlier_rate > 0.01:
         sample = (
             df.filter((col(col_name) < lower) | (col(col_name) > upper))
             .select(col_name).limit(5)
@@ -119,30 +119,32 @@ for col_name in NUMERIC_COLS:
     else:
         print(f"  ✅ {col_name}: clean ({outlier_count} outliers, below threshold)")
 
-# ── Detection 3: Format Inconsistency (issue_date) ──────────────────────────
+# ── Detection 3: Format Inconsistency (issue_d) ──────────────────────────
 print("\n🔍 Detecting Format Inconsistencies...")
-if "issue_date" in df.columns:
-    iso_pattern = r"^\d{4}-\d{2}-\d{2}$"
-    us_pattern  = r"^\d{2}/\d{2}/\d{4}$"
+if "issue_d" in df.columns:
+    iso_pattern = r"^[A-Za-z]{3}-\d{2}$" 
+    us_pattern  = r"^[A-Za-z]{3}-\d{2}$"
 
-    iso_count = df.filter(regexp_extract(col("issue_date"), iso_pattern, 0) != "").count()
-    us_count  = df.filter(regexp_extract(col("issue_date"), us_pattern,  0) != "").count()
+    iso_count = df.filter(regexp_extract(col("issue_d"), iso_pattern, 0) != "").count()
+    us_count  = df.filter(regexp_extract(col("issue_d"), us_pattern,  0) != "").count()
 
     if iso_count > 0 and us_count > 0:
-        sample = df.select("issue_date").limit(5).toPandas()["issue_date"].tolist()
+        sample = df.select("issue_d").limit(5).toPandas()["issue_d"].tolist()
         issues.append({
-            "column": "issue_date",
+            "column": "issue_d",
             "issue_type": "Format Inconsistency",
             "severity": "MEDIUM",
             "detail": (
                 f"Mixed formats: {iso_count} rows as YYYY-MM-DD, "
                 f"{us_count} rows as MM/DD/YYYY"
-            ),
+            ),  
             "sample_values": str(sample)
         })
-        print(f"  ⚠️  issue_date: mixed date formats detected")
+        print(f"  ⚠️  issue_d: mixed date formats detected")
+    else:
+        print("  ✅ issue_d: format consistent, no mixed formats detected")
 else:
-    print("  ⏭️  issue_date: column not found, skipping")
+    print("  ⏭️  issue_d: column not found, skipping")
 
 # ── Compute Data Quality Score ───────────────────────────────────────────────
 deductions = {"HIGH": 8, "MEDIUM": 4, "LOW": 2}  # softened from 15/7/3

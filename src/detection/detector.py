@@ -166,5 +166,9 @@ with open("/Volumes/workspace/team6/data/issues_output.json", "w") as f:
 with open("/Volumes/workspace/team6/data/quality_score.json", "w") as f:
     json.dump({"quality_score": quality_score}, f, indent=2)
 
+with open("/Volumes/workspace/team6/data/df_shape.json", "w") as f:
+    json.dump({"total_rows": total, "total_columns": len(df.columns)}, f, indent=2)
+
 print("\n✅ issues_output.json saved")
 print("✅ quality_score.json saved")
+print("✅ df_shape.json saved")

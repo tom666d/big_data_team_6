@@ -15,12 +15,10 @@ load_dotenv(project_root / ".env")
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-input_path = project_root / "data" / "issues_output.json" # change #issues_output
+input_path = project_root / "data" / "issues_output.json"
 output_path = project_root / "data" / "issues_with_suggestions.json"
 historical_path = project_root / "data" / "historical_decisions.json"
-
-# Temporary assumption for sample dataset
-DEFAULT_TOTAL_ROWS = 10
+df_shape_path = project_root / "data" / "df_shape.json"
 
 
 # =========================
@@ -29,12 +27,49 @@ DEFAULT_TOTAL_ROWS = 10
 with open(input_path, "r", encoding="utf-8") as f:
     issues = json.load(f)
 
-print(f"📂 Loaded {len(issues)} issue(s) from issues_output.json\n")
-
 
 # =========================
 # Helper functions
 # =========================
+def load_df_shape(path: Path) -> dict[str, int]:
+    """
+    Load dataframe shape metadata from JSON.
+
+    Expected format:
+    {
+        "total_rows": 100000,
+        "total_columns": 152
+    }
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"df_shape file not found: {path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        shape_info = json.load(f)
+
+    total_rows = shape_info.get("total_rows")
+    total_columns = shape_info.get("total_columns")
+
+    if not isinstance(total_rows, int) or total_rows <= 0:
+        raise ValueError("df_shape.json must contain a positive integer 'total_rows'")
+
+    if not isinstance(total_columns, int) or total_columns <= 0:
+        raise ValueError("df_shape.json must contain a positive integer 'total_columns'")
+
+    return {
+        "total_rows": total_rows,
+        "total_columns": total_columns
+    }
+
+
+df_shape = load_df_shape(df_shape_path)
+TOTAL_ROWS = df_shape["total_rows"]
+TOTAL_COLUMNS = df_shape["total_columns"]
+
+print(f"📂 Loaded {len(issues)} issue(s) from issues_output.json")
+print(f"📐 Loaded dataframe shape: rows={TOTAL_ROWS}, columns={TOTAL_COLUMNS}\n")
+
+
 def extract_affected_rows(detail: str) -> int | None:
     """
     Try to extract affected row count from issue detail text.
@@ -48,17 +83,14 @@ def extract_affected_rows(detail: str) -> int | None:
     if not detail:
         return None
 
-    # Pattern like (4/10 rows)
     match_fraction = re.search(r"\((\d+)\s*/\s*(\d+)\s*rows\)", detail)
     if match_fraction:
         return int(match_fraction.group(1))
 
-    # Pattern like "1 outlier(s) detected"
     match_outlier = re.search(r"(\d+)\s+outlier\(s\)", detail, re.IGNORECASE)
     if match_outlier:
         return int(match_outlier.group(1))
 
-    # Pattern like "7 rows as ..., 3 rows as ..."
     row_counts = re.findall(r"(\d+)\s+rows", detail, re.IGNORECASE)
     if row_counts:
         counts = [int(x) for x in row_counts]
@@ -67,16 +99,45 @@ def extract_affected_rows(detail: str) -> int | None:
     return None
 
 
-def compute_affected_percent(detail: str, total_rows: int = DEFAULT_TOTAL_ROWS) -> float | None:
+def extract_affected_rows_percent(detail: str) -> float | None:
     """
-    Compute affected percent using affected_rows / total_rows * 100.
+    Extract affected row percentage from issue detail text.
+
+    Supported patterns:
+    1. '35215 outlier(s) (1.6% of rows)' -> 1.6
+    2. 'Null rate: 40% (4/10 rows)' -> 40.0
     """
+    if not detail:
+        return None
+
+    match_percent_of_rows = re.search(r"(\d+(?:\.\d+)?)%\s+of\s+rows", detail, re.IGNORECASE)
+    if match_percent_of_rows:
+        return float(match_percent_of_rows.group(1))
+
+    match_null_rate = re.search(r"Null rate:\s*(\d+(?:\.\d+)?)%", detail, re.IGNORECASE)
+    if match_null_rate:
+        return float(match_null_rate.group(1))
+
+    return None
+
+
+def compute_affected_rows_percent(detail: str, total_rows: int) -> float | None:
+    """
+    Compute affected row percentage.
+
+    Priority:
+    1. Use the percentage directly from detail text if available.
+    2. Otherwise, compute from affected row count / total_rows.
+    """
+    percent_from_detail = extract_affected_rows_percent(detail)
+    if percent_from_detail is not None:
+        return round(percent_from_detail, 2)
+
     affected_rows = extract_affected_rows(detail)
     if affected_rows is None or total_rows <= 0:
         return None
 
-    percent = (affected_rows / total_rows) * 100
-    return round(percent, 2)
+    return round((affected_rows / total_rows) * 100, 2)
 
 
 def severity_to_score(severity: str) -> int:
@@ -91,140 +152,100 @@ def severity_to_score(severity: str) -> int:
     return severity_map.get(str(severity).upper(), 5)
 
 
-def affected_percent_to_score(affected_percent: float | None) -> int:
+def affected_rows_percent_to_score(affected_rows_percent: float | None) -> int:
     """
-    Convert affected percent to a 1-10 style score.
+    Convert affected row percentage to a 1-10 style score.
     """
-    if affected_percent is None:
+    if affected_rows_percent is None:
         return 5
-    if affected_percent < 5:
+    if affected_rows_percent < 5:
         return 1
-    if affected_percent < 15:
+    if affected_rows_percent < 15:
         return 3
-    if affected_percent < 30:
+    if affected_rows_percent < 30:
         return 5
-    if affected_percent < 50:
+    if affected_rows_percent < 50:
         return 7
     return 9
 
 
-def compute_priority_score(severity: str, affected_percent: float | None) -> int:
+def compute_priority_score(severity: str, affected_rows_percent: float | None) -> int:
     """
-    Priority score = 0.6 * severity_score + 0.4 * affected_score
+    Priority score = 0.6 * severity_score + 0.4 * affected_rows_percent_score.
     Final score is rounded and clipped to 1-10.
     """
     severity_score = severity_to_score(severity)
-    affected_score = affected_percent_to_score(affected_percent)
+    affected_score = affected_rows_percent_to_score(affected_rows_percent)
 
     weighted_score = round(0.6 * severity_score + 0.4 * affected_score)
     weighted_score = max(1, min(10, weighted_score))
     return weighted_score
 
-    # Week 2 temporary assumption:
-    # selected remediation fully resolves the current issue
-    after_rows = 0
-    after_percent = 0.0 if total_rows > 0 else None
-
-    chosen_action = None
-    suggestions = remediation.get("suggestions", [])
-    for s in suggestions:
-        if s.get("option") == 1:
-            chosen_action = s.get("action")
-            break
-    if chosen_action is None and suggestions:
-        chosen_action = suggestions[0].get("action")
-
-    return {
-        "before": {
-            "affected_rows": affected_rows,
-            "affected_percent": before_percent,
-            "detail": issue.get("detail"),
-            "sample_values": issue.get("sample_values")
-        },
-        "after": {
-            "affected_rows": after_rows,
-            "affected_percent": after_percent,
-            "detail": f"Expected issue resolved after applying: {chosen_action}"
-        },
-        "comparison_summary": {
-            "affected_rows_delta": after_rows - affected_rows,
-            "affected_percent_delta": round(after_percent - before_percent, 2) if before_percent is not None else None,
-            "chosen_action": chosen_action
-        }
-    }
 
 # =========================
 # Week 2: Data Quality Score
 # =========================
-# Week 2 temporary assumption:
-# the sample dataset has 10 rows and 4 total columns,
-# so total_cells = 40.
-#
-# In the future, total_rows and total_columns should not be hardcoded.
-# They should be read from detector metadata or from the source dataframe shape.
-DEFAULT_TOTAL_ROWS = 10
-DEFAULT_TOTAL_COLUMNS = 4
-
-
-def compute_total_cells(
-    total_rows: int = DEFAULT_TOTAL_ROWS,
-    total_columns: int = DEFAULT_TOTAL_COLUMNS
+def compute_total_affected_rows(
+    issues_list: list[dict[str, Any]],
+    total_rows: int
 ) -> int:
     """
-    Week 2 temporary assumption for the sample dataset:
-    - total_rows = 10
-    - total_columns = 4
+    Estimate total affected rows across all issues by summing affected row percentages.
 
-    Therefore:
-    total_cells = 10 * 4 = 40
-
-    Future improvement:
-    this should be replaced by metadata from the detector output
-    or by directly reading the source dataframe shape.
+    Note:
+    - This is a simplified approximation.
+    - Different issues may overlap on the same rows, so this can overcount.
+    - The final percentage is capped at 100%.
     """
-    return total_rows * total_columns
+    total_affected_percent = 0.0
 
-
-def compute_total_problem_cells(issues_list: list[dict[str, Any]]) -> int:
-    """
-    Sum affected rows across all issues.
-    We treat one issue affecting one column, so affected rows = affected cells for that issue.
-    """
-    total_problem_cells = 0
     for issue in issues_list:
-        affected_rows = extract_affected_rows(issue.get("detail", ""))
-        if affected_rows is not None:
-            total_problem_cells += affected_rows
-    return total_problem_cells
+        issue_percent = compute_affected_rows_percent(issue.get("detail", ""), total_rows)
+        if issue_percent is not None:
+            total_affected_percent += issue_percent
+
+    total_affected_percent = min(total_affected_percent, 100.0)
+    total_affected_rows = round((total_affected_percent / 100) * total_rows)
+
+    return total_affected_rows
 
 
 def compute_quality_scores_for_issue(
     current_issue: dict[str, Any],
     issues_list: list[dict[str, Any]],
-    total_rows: int = DEFAULT_TOTAL_ROWS,
-    total_columns: int = DEFAULT_TOTAL_COLUMNS
+    total_rows: int
 ) -> dict[str, float]:
     """
-    Cell-level quality score logic:
+    Row-based quality score logic.
 
-    before = good_cells_before / total_cells
-    after  = good_cells_after / total_cells
-    delta  = after - before
+    before:
+    - overall row quality before fixing the current issue
 
-    Assumption:
-    - current issue fix successfully resolves all affected cells of this issue
-    - other issues remain unchanged
+    after:
+    - overall row quality after assuming the current issue is fully resolved
+
+    delta:
+    - improvement contributed by fixing the current issue
+
+    Note:
+    - This uses affected_rows_percent as the common unit.
+    - The total affected percent is capped at 100%.
     """
-    total_cells = compute_total_cells(total_rows, total_columns)
-    total_problem_cells_before = compute_total_problem_cells(issues_list)
+    total_affected_rows_before = compute_total_affected_rows(issues_list, total_rows)
 
-    current_issue_affected = extract_affected_rows(current_issue.get("detail", "")) or 0
+    current_issue_percent = compute_affected_rows_percent(
+        current_issue.get("detail", ""),
+        total_rows
+    ) or 0.0
+    current_issue_affected_rows = round((current_issue_percent / 100) * total_rows)
 
-    good_cells_before = total_cells - total_problem_cells_before
-    good_cells_after = total_cells - max(0, total_problem_cells_before - current_issue_affected)
+    affected_rows_after = max(0, total_affected_rows_before - current_issue_affected_rows)
 
-    before = round((good_cells_before / total_cells) * 100, 2) if total_cells > 0 else 0.0
-    after = round((good_cells_after / total_cells) * 100, 2) if total_cells > 0 else 0.0
+    good_rows_before = total_rows - total_affected_rows_before
+    good_rows_after = total_rows - affected_rows_after
+
+    before = round((good_rows_before / total_rows) * 100, 2) if total_rows > 0 else 0.0
+    after = round((good_rows_after / total_rows) * 100, 2) if total_rows > 0 else 0.0
     delta = round(after - before, 2)
 
     return {
@@ -255,14 +276,6 @@ def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
         return {}
 
 
-def save_historical_feedback(path: Path, history: dict[str, list[dict[str, Any]]]) -> None:
-    """
-    Save historical decisions grouped by issue_type.
-    """
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
-
-
 def format_historical_context(issue_type: str, history: dict[str, list[dict[str, Any]]]) -> str:
     """
     Build short historical context for the current issue type only.
@@ -273,7 +286,7 @@ def format_historical_context(issue_type: str, history: dict[str, list[dict[str,
 
     lines = []
     for idx, record in enumerate(records[-5:], start=1):
-       lines.append(
+        lines.append(
             f"{idx}. Column: {record.get('column')}; "
             f"Chosen Action: {record.get('chosen_action')}; "
             f"Rationale: {record.get('chosen_rationale')}; "
@@ -283,71 +296,6 @@ def format_historical_context(issue_type: str, history: dict[str, list[dict[str,
         )
 
     return "\n".join(lines)
-
-
-def append_default_historical_decision(
-    history: dict[str, list[dict[str, Any]]],
-    issue: dict[str, Any],
-    remediation: dict[str, Any]
-) -> dict[str, list[dict[str, Any]]]:
-    """
-    Week 2 temporary assumption:
-    - automatically treat suggestion option 1 as the chosen action
-    """
-    issue_type = issue["issue_type"]
-    suggestions = remediation.get("suggestions", [])
-
-    chosen = None
-    for suggestion in suggestions:
-        if suggestion.get("option") == 1:
-            chosen = suggestion
-            break
-
-    if chosen is None and suggestions:
-        chosen = suggestions[0]
-
-    if chosen is None:
-        return history
-
-def append_default_historical_decision(
-    history: dict[str, list[dict[str, Any]]],
-    issue: dict[str, Any],
-    remediation: dict[str, Any]
-) -> dict[str, list[dict[str, Any]]]:
-    """
-    Week 2 temporary assumption:
-    - automatically treat suggestion option 1 as the chosen action
-    """
-    issue_type = issue["issue_type"]
-    suggestions = remediation.get("suggestions", [])
-
-    chosen = None
-    for suggestion in suggestions:
-        if suggestion.get("option") == 1:
-            chosen = suggestion
-            break
-
-    if chosen is None and suggestions:
-        chosen = suggestions[0]
-
-    if chosen is None:
-        return history
-
-    record = {
-        "column": issue["column"],
-        "chosen_option": chosen.get("option"),
-        "chosen_action": chosen.get("action"),
-        "chosen_rationale": chosen.get("rationale"),
-        "chosen_caveats": chosen.get("caveats"),
-        "chosen_confidence": chosen.get("confidence"),
-        "detail_summary": issue.get("detail")
-    }
-
-    if issue_type not in history:
-        history[issue_type] = []
-
-    history[issue_type].append(record)
-    return history
 
 
 # =========================
@@ -416,8 +364,8 @@ def generate_remediation(
 ) -> dict[str, Any]:
     """
     Agent 2:
-    Input = detector issue + Agent 1 diagnosis + historical feedback
-    Output = remediation suggestions with runnable PySpark fix code
+    Input = detector issue + Agent 1 diagnosis + historical feedback.
+    Output = remediation suggestions with runnable PySpark fix code.
     """
     prompt = f"""
 You are Agent 2 in a two-agent data quality remediation workflow.
@@ -436,14 +384,16 @@ Agent 1 diagnosis:
 Root Cause: {diagnosis['root_cause']}
 Business Impact: {diagnosis['business_impact']}
 Priority Score: {diagnosis['priority_score']}
-Affected Percent: {diagnosis['affected_percent']}
+Affected Rows Percent: {diagnosis['affected_rows_percent']}
 
 Historical decisions for this issue type:
 {historical_context}
 
 Requirements:
-1. Generate exactly 2 remediation suggestions.
-2. Each suggestion must include:
+1. Generate exactly 3 remediation suggestions.
+2. Option 1 and Option 2 must be actual remediation actions.
+3. Option 3 must always be "Decline changes".
+4. Each suggestion must include:
    - option
    - action
    - confidence
@@ -452,7 +402,7 @@ Requirements:
    - pyspark_code
 
 Field rules:
-- option: integer (1 or 2)
+- option: integer (1, 2, or 3)
 - action: short remediation title
 - confidence: integer from 0 to 100
 - rationale: one or two concise sentences
@@ -485,6 +435,14 @@ Important:
 - Make the code practical and directly tied to the issue.
 - Return JSON only.
 
+Special rule for option 3:
+- option 3 must always represent "Decline changes"
+- action must be exactly "Decline changes"
+- rationale should explain that no remediation will be applied and the decision is still captured for audit purposes
+- caveats should explain that the issue remains unresolved
+- pyspark_code should be a no-op comment such as "# No change applied to df"
+- confidence can be 100 because this is a user decision rather than a technical remediation estimate
+
 Return exactly this format:
 {{
   "suggestions": [
@@ -503,6 +461,14 @@ Return exactly this format:
       "rationale": "string",
       "caveats": "string",
       "pyspark_code": "string"
+    }},
+    {{
+      "option": 3,
+      "action": "Decline changes",
+      "confidence": 100,
+      "rationale": "string",
+      "caveats": "string",
+      "pyspark_code": "# No change applied to df"
     }}
   ]
 }}
@@ -547,7 +513,7 @@ def build_output_record(
             "root_cause": diagnosis["root_cause"],
             "business_impact": diagnosis["business_impact"],
             "priority_score": diagnosis["priority_score"],
-            "affected_percent": diagnosis["affected_percent"]
+            "affected_rows_percent": diagnosis["affected_rows_percent"]
         },
         "remediation": {
             "suggestions": remediation.get("suggestions", [])
@@ -561,8 +527,7 @@ def build_output_record(
 # =========================
 print("🤖 Running Week 2 Agent pipeline...\n")
 
-# historical_feedback = load_historical_feedback(historical_path) #formal version
-historical_feedback = {} #training version
+historical_feedback = load_historical_feedback(historical_path)
 results = []
 
 for issue in issues:
@@ -572,19 +537,19 @@ for issue in issues:
     root_cause_result = diagnose_root_cause(issue)
 
     # Deterministic diagnosis fields
-    affected_percent = compute_affected_percent(issue.get("detail", ""), DEFAULT_TOTAL_ROWS)
-    priority_score = compute_priority_score(issue.get("severity", ""), affected_percent)
+    affected_rows_percent = compute_affected_rows_percent(issue.get("detail", ""), TOTAL_ROWS)
+    priority_score = compute_priority_score(issue.get("severity", ""), affected_rows_percent)
 
     diagnosis_result = {
         "root_cause": root_cause_result.get("root_cause"),
         "business_impact": root_cause_result.get("business_impact"),
         "priority_score": priority_score,
-        "affected_percent": affected_percent
+        "affected_rows_percent": affected_rows_percent
     }
 
     print(
         f"  Agent 1 done → priority_score={diagnosis_result['priority_score']}, "
-        f"affected_percent={diagnosis_result['affected_percent']}"
+        f"affected_rows_percent={diagnosis_result['affected_rows_percent']}"
     )
 
     # Historical context for Agent 2
@@ -595,13 +560,16 @@ for issue in issues:
     print(f"  Agent 2 done → generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
 
     # Week 2 quality score
-    quality_score_result = compute_quality_scores_for_issue(issue, issues, DEFAULT_TOTAL_ROWS)
+    quality_score_result = compute_quality_scores_for_issue(
+        issue,
+        issues,
+        TOTAL_ROWS
+    )
     print(
         f"  Quality score → before={quality_score_result['before']}, "
         f"after={quality_score_result['after']}, "
         f"delta={quality_score_result['delta']}"
     )
-
 
     # Save output record
     output_record = build_output_record(
@@ -611,13 +579,6 @@ for issue in issues:
         quality_score=quality_score_result
     )
     results.append(output_record)
-
-    # Update memory with default chosen action = option 1
-    historical_feedback = append_default_historical_decision(
-        historical_feedback,
-        issue,
-        remediation_result
-    )
 
     print()
 
@@ -632,8 +593,4 @@ results = sorted(
 with open(output_path, "w", encoding="utf-8") as f:
     json.dump(results, f, indent=2, ensure_ascii=False)
 
-# Save updated historical memory
-save_historical_feedback(historical_path, historical_feedback)
-
 print("✅ issues_with_suggestions.json saved")
-print("✅ historical_decisions.json updated")

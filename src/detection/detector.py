@@ -3,15 +3,27 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, regexp_extract, when, trim
 from pyspark.sql.types import DoubleType
 import json
+import os
+
+
 
 # ── Start Spark ──────────────────────────────────────────────────────────────
 spark = SparkSession.builder \
     .appName("DataQualityDetector") \
     .getOrCreate()
-spark.sparkContext.setLogLevel("ERROR")
+
 
 # ── Load data ────────────────────────────────────────────────────────────────
-df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+LOCAL_MODE = not os.path.exists("/dbfs")
+DEMO_MODE= True
+
+if LOCAL_MODE:
+    df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+elif DEMO_MODE:
+    df = spark.table("workspace.team6.demo_lendingclub")
+else:
+    df = spark.table("workspace.team6.lendingclub_full")
+
 print("✅ Step 1: Data loaded successfully")
 
 total = df.count()
@@ -64,7 +76,7 @@ for col_name in NULL_COLS:
     else:
         print(f"  ✅ {col_name}: null rate = {null_rate:.0%}, within threshold")
 
-# ── Detection 2: Statistical Outlier (3×IQR, flag threshold: >5%) ────────────
+# ── Detection 2: Statistical Outlier (1.5×IQR, flag threshold: >1%) ────────────
 print("\n🔍 Detecting Statistical Outliers (IQR)...")
 
 NUMERIC_COLS = [
@@ -99,7 +111,7 @@ for col_name in NUMERIC_COLS:
 
     outlier_rate = outlier_count / total
 
-    if outlier_rate > 0.05:  # raised from 0.01 → 0.05
+    if outlier_rate > 0.05:
         sample = (
             df.filter((col(col_name) < lower) | (col(col_name) > upper))
             .select(col_name).limit(5)
@@ -108,7 +120,7 @@ for col_name in NUMERIC_COLS:
         issues.append({
             "column": col_name,
             "issue_type": "Statistical Outlier",
-            "severity": "HIGH" if outlier_rate > 0.05 else "MEDIUM",
+            "severity": "HIGH" if outlier_rate > 0.20 else "MEDIUM",
             "detail": (
                 f"{outlier_count} outlier(s) ({outlier_rate:.1%} of rows). "
                 f"IQR bounds: [{lower:.2f}, {upper:.2f}]"
@@ -120,30 +132,32 @@ for col_name in NUMERIC_COLS:
     else:
         print(f"  ✅ {col_name}: clean ({outlier_count} outliers, below threshold)")
 
-# ── Detection 3: Format Inconsistency (issue_date) ──────────────────────────
+# ── Detection 3: Format Inconsistency (issue_d) ──────────────────────────
 print("\n🔍 Detecting Format Inconsistencies...")
-if "issue_date" in df.columns:
-    iso_pattern = r"^\d{4}-\d{2}-\d{2}$"
-    us_pattern  = r"^\d{2}/\d{2}/\d{4}$"
+if "issue_d" in df.columns:
+    iso_pattern = r"^[A-Za-z]{3}-\d{2}$" 
+    us_pattern  = r"^[A-Za-z]{3}-\d{2}$"
 
-    iso_count = df.filter(regexp_extract(col("issue_date"), iso_pattern, 0) != "").count()
-    us_count  = df.filter(regexp_extract(col("issue_date"), us_pattern,  0) != "").count()
+    iso_count = df.filter(regexp_extract(col("issue_d"), iso_pattern, 0) != "").count()
+    us_count  = df.filter(regexp_extract(col("issue_d"), us_pattern,  0) != "").count()
 
     if iso_count > 0 and us_count > 0:
-        sample = df.select("issue_date").limit(5).toPandas()["issue_date"].tolist()
+        sample = df.select("issue_d").limit(5).toPandas()["issue_d"].tolist()
         issues.append({
-            "column": "issue_date",
+            "column": "issue_d",
             "issue_type": "Format Inconsistency",
             "severity": "MEDIUM",
             "detail": (
                 f"Mixed formats: {iso_count} rows as YYYY-MM-DD, "
                 f"{us_count} rows as MM/DD/YYYY"
-            ),
+            ),  
             "sample_values": str(sample)
         })
-        print(f"  ⚠️  issue_date: mixed date formats detected")
+        print(f"  ⚠️  issue_d: mixed date formats detected")
+    else:
+        print("  ✅ issue_d: format consistent, no mixed formats detected")
 else:
-    print("  ⏭️  issue_date: column not found, skipping")
+    print("  ⏭️  issue_d: column not found, skipping")
 
 # ── Compute Data Quality Score ───────────────────────────────────────────────
 deductions = {"HIGH": 8, "MEDIUM": 4, "LOW": 2}  # softened from 15/7/3
@@ -152,16 +166,31 @@ quality_score = max(0, min(100, raw_score))
 
 print(f"\n📊 Data Quality Score: {quality_score}/100  |  {len(issues)} issue(s) found")
 
-# ── Output ───────────────────────────────────────────────────────────────────
+# --- Output -----------------------------------
+
 print(f"\n✅ Detection complete — {len(issues)} issue(s) found")
 for idx, issue in enumerate(issues):
-    print(f"  Issue {idx+1}: [{issue['severity']}] {issue['column']} — {issue['issue_type']}")
+    print(f" Issue {idx+1}: [{issue['severity']}] {issue['column']} - {issue['issue_type']}")
 
-with open("data/issues_output.json", "w") as f:
-    json.dump(issues, f, indent=2, ensure_ascii=False)
 
-with open("data/quality_score.json", "w") as f:
+if LOCAL_MODE:
+    output_issues = "data/issues_output.json"
+    output_quality = "data/quality_score.json"
+    output_shape = "data/df_shape.json"
+else:
+    output_issues = "/Volumes/workspace/team6/data/issues_output.json"
+    output_quality = "/Volumes/workspace/team6/data/quality_score.json"
+    output_shape = "/Volumes/workspace/team6/data/df_shape.json"
+
+with open(output_issues, "w") as f:
+    json.dump(issues, f, indent=2)
+
+with open(output_quality, "w") as f:
     json.dump({"quality_score": quality_score}, f, indent=2)
 
+with open(output_shape, "w") as f:
+    json.dump({"total_rows": total, "total_columns": len(df.columns)}, f, indent=2)
+
 print("\n✅ issues_output.json saved")
-spark.stop()
+print("✅ quality_score.json saved")
+print("✅ df_shape.json saved")

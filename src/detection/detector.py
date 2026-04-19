@@ -15,9 +15,12 @@ spark = SparkSession.builder \
 
 # ── Load data ────────────────────────────────────────────────────────────────
 LOCAL_MODE = not os.path.exists("/dbfs")
+DEMO_MODE= True
 
 if LOCAL_MODE:
     df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+elif DEMO_MODE:
+    df = spark.table("workspace.team6.demo_lendingclub")
 else:
     df = spark.table("workspace.team6.lendingclub_full")
 
@@ -108,7 +111,7 @@ for col_name in NUMERIC_COLS:
 
     outlier_rate = outlier_count / total
 
-    if outlier_rate > 0.01:
+    if outlier_rate > 0.05:
         sample = (
             df.filter((col(col_name) < lower) | (col(col_name) > upper))
             .select(col_name).limit(5)
@@ -117,7 +120,7 @@ for col_name in NUMERIC_COLS:
         issues.append({
             "column": col_name,
             "issue_type": "Statistical Outlier",
-            "severity": "HIGH" if outlier_rate > 0.05 else "MEDIUM",
+            "severity": "HIGH" if outlier_rate > 0.20 else "MEDIUM",
             "detail": (
                 f"{outlier_count} outlier(s) ({outlier_rate:.1%} of rows). "
                 f"IQR bounds: [{lower:.2f}, {upper:.2f}]"

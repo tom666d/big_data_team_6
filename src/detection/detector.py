@@ -18,7 +18,10 @@ LOCAL_MODE = not os.path.exists("/dbfs")
 DEMO_MODE= True
 
 if LOCAL_MODE:
-    df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
+    if DEMO_MODE:
+        df = spark.read.csv("data/demo_lendingclub.csv", header=True, inferSchema=True)
+    else:
+        df = spark.read.csv("data/LendingClub_100k.csv", header=True, inferSchema=True)
 elif DEMO_MODE:
     df = spark.table("workspace.team6.demo_lendingclub")
 else:

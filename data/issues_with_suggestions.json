@@ -2,49 +2,49 @@
   {
     "input": {
       "column": "loan_amnt",
-      "issue_type": "Statistical Outlier",
-      "severity": "MEDIUM",
-      "detail": "35215 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]",
-      "sample_values": "[40000.0, 40000.0, 40000.0, 40000.0, 40000.0]"
+      "issue_type": "Null Spike",
+      "severity": "HIGH",
+      "detail": "Null rate: 40% (39972/100000 rows)",
+      "sample_values": "[20000.0, 35000.0, 11950.0]"
     },
     "diagnosis": {
-      "root_cause": "Inaccurate data entry or loan processing errors may have allowed excessive loan amounts to be recorded, exceeding reasonable limits.",
-      "business_impact": "These outliers can skew average loan amounts, misleading financial analysis and adversely affecting lending models and risk assessments.",
-      "priority_score": 4,
-      "affected_rows_percent": 1.6
+      "root_cause": "The high rate of null values in the 'loan_amnt' column may be due to data entry errors or issues in the data migration process where this field was not properly populated.",
+      "business_impact": "This null spike can severely hinder accurate financial analysis and modeling, leading to incorrect loan assessments and compromised decision-making.",
+      "priority_score": 8,
+      "affected_rows_percent": 40.0
     },
     "remediation": {
       "suggestions": [
         {
           "option": 1,
-          "action": "Cap outliers to upper limit",
+          "action": "Fill with Mean",
           "confidence": 85,
-          "rationale": "Capping the loan amounts to the calculated upper limit will help mitigate the influence of outliers on the financial analysis.",
-          "caveats": "Assumes that all loan amounts above 38000 are erroneous and should be corrected.",
-          "pyspark_code": "df = df.withColumn('loan_amnt', F.when(df['loan_amnt'] > 38000, 38000).otherwise(df['loan_amnt']))"
+          "rationale": "Filling the null values with the average of the existing loan amounts is a common practice that maintains overall data distribution.",
+          "caveats": "This method assumes that the mean is a suitable representation of the missing values, which may not always hold true.",
+          "pyspark_code": "from pyspark.sql.functions import mean\nmean_value = df.select(mean('loan_amnt')).first()[0]\ndf = df.fillna({'loan_amnt': mean_value})"
         },
         {
           "option": 2,
-          "action": "Flag outliers for review",
+          "action": "Fill with Median",
           "confidence": 65,
-          "rationale": "Flagging outliers allows for further investigation without immediate data alteration.",
-          "caveats": "This method does not correct the outliers but identifies them for future review.",
-          "pyspark_code": "df = df.withColumn('is_outlier', F.when(df['loan_amnt'] > 38000, True).otherwise(False))"
+          "rationale": "Using the median to fill null values can be more robust against outliers compared to the mean.",
+          "caveats": "This approach assumes that the distribution is not skewed significantly; if it is, this may not accurately represent the missing values.",
+          "pyspark_code": "from pyspark.sql.functions import expr\nmedian_value = df.approxQuantile('loan_amnt', [0.5], 0)[0]\ndf = df.fillna({'loan_amnt': median_value})"
         },
         {
           "option": 3,
           "action": "Decline changes",
           "confidence": 100,
-          "rationale": "No remediation will be applied at this time, but this decision is documented for future reference.",
-          "caveats": "The issue remains unresolved in the dataset.",
+          "rationale": "No remediation will be applied, and this decision is captured for audit purposes.",
+          "caveats": "The issue of null values remains unresolved.",
           "pyspark_code": "# No change applied to df"
         }
       ]
     },
     "quality_score": {
-      "before": 93.4,
-      "after": 95.0,
-      "delta": 1.6
+      "before": 50.0,
+      "after": 90.0,
+      "delta": 40.0
     }
   },
   {
@@ -52,14 +52,14 @@
       "column": "funded_amnt",
       "issue_type": "Statistical Outlier",
       "severity": "MEDIUM",
-      "detail": "35215 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]",
-      "sample_values": "[40000.0, 40000.0, 40000.0, 40000.0, 40000.0]"
+      "detail": "10039 outlier(s) (10.0% of rows). IQR bounds: [-13500.00, 46500.00]",
+      "sample_values": "[9999999.0, 9999999.0, 9999999.0, 9999999.0, 9999999.0]"
     },
     "diagnosis": {
-      "root_cause": "The presence of inconsistent data entry practices or system errors leading to unsupported funding amounts, resulting in outliers beyond expected limits.",
-      "business_impact": "This can distort analysis outcomes, skew predictive models, and misinform decision-making processes, affecting financial forecasting and risk assessment.",
-      "priority_score": 4,
-      "affected_rows_percent": 1.6
+      "root_cause": "Data entry error or misconfiguration in the funding process led to unrealistic funded amounts being recorded.",
+      "business_impact": "These outliers can distort analysis, impact decision-making, and result in inaccurate financial reporting or credit modeling.",
+      "priority_score": 5,
+      "affected_rows_percent": 10.0
     },
     "remediation": {
       "suggestions": [
@@ -67,128 +67,32 @@
           "option": 1,
           "action": "Cap outliers to upper limit",
           "confidence": 85,
-          "rationale": "Capping the outliers assists in preserving data integrity without excessively losing data points.",
-          "caveats": "Assumes that all values above 38000 are erroneous and should be capped.",
-          "pyspark_code": "df = df.withColumn('funded_amnt', F.when(df['funded_amnt'] > 38000, 38000).otherwise(df['funded_amnt']))"
+          "rationale": "Capping the funded amounts to the upper limit maintains data integrity while addressing the influence of extreme outliers.",
+          "caveats": "Assumes that all funded amounts above 46500 are erroneous and should be capped.",
+          "pyspark_code": "df = df.withColumn('funded_amnt', F.when(df.funded_amnt > 46500, 46500).otherwise(df.funded_amnt))"
         },
         {
           "option": 2,
-          "action": "Cap outliers to upper limit (alternative approach)",
+          "action": "Cap outliers based on historical limit",
           "confidence": 65,
-          "rationale": "Implementing an upper cap on funded amounts can help in reducing skewness in analyses.",
-          "caveats": "Might still include some potentially valid values close to outlier limits, which could lead to loss of important data.",
-          "pyspark_code": "df = df.withColumn('funded_amnt', F.when(df['funded_amnt'] > 38000, 38000).otherwise(df['funded_amnt']))"
+          "rationale": "Applying a historical correction might help to control the influence of outliers while potentially retaining some valid data.",
+          "caveats": "Assumes that significant values beyond 38000 are erroneous, but could discard some valid high amounts.",
+          "pyspark_code": "df = df.withColumn('funded_amnt', F.when(df.funded_amnt > 38000, 38000).otherwise(df.funded_amnt))"
         },
         {
           "option": 3,
           "action": "Decline changes",
           "confidence": 100,
-          "rationale": "No remediation will be applied at this moment and the decision is documented for audit purposes.",
-          "caveats": "The issue remains unresolved and may continue to affect analyses.",
+          "rationale": "No remediation will be applied at this time, but the decision is documented for future reference.",
+          "caveats": "The issue remains unresolved and may continue to impact analysis.",
           "pyspark_code": "# No change applied to df"
         }
       ]
     },
     "quality_score": {
-      "before": 93.4,
-      "after": 95.0,
-      "delta": 1.6
-    }
-  },
-  {
-    "input": {
-      "column": "funded_amnt_inv",
-      "issue_type": "Statistical Outlier",
-      "severity": "MEDIUM",
-      "detail": "35212 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]",
-      "sample_values": "[40000.0, 40000.0, 40000.0, 40000.0, 40000.0]"
-    },
-    "diagnosis": {
-      "root_cause": "The presence of systemic data entry errors or incorrect funding limits leading to inflated values in the funded_amnt_inv column.",
-      "business_impact": "This can skew statistical analyses, impact predictive modeling accuracy, and lead to misleading insights in financial reporting.",
-      "priority_score": 4,
-      "affected_rows_percent": 1.6
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Cap outliers to upper limit",
-          "confidence": 85,
-          "rationale": "Capping outliers helps maintain data integrity while limiting skewing effects on financial analytics.",
-          "caveats": "Assumes that all values above 38000 are erroneous and should be corrected.",
-          "pyspark_code": "df = df.withColumn('funded_amnt_inv', F.when(df['funded_amnt_inv'] > 38000, 38000).otherwise(df['funded_amnt_inv']))"
-        },
-        {
-          "option": 2,
-          "action": "Cap outliers to upper limit",
-          "confidence": 65,
-          "rationale": "Capping values protects against extreme outliers impacting analysis.",
-          "caveats": "The arbitrary cap may not reflect actual funding situations accurately.",
-          "pyspark_code": "df = df.withColumn('funded_amnt_inv', F.when(df['funded_amnt_inv'] > 38000, 38000).otherwise(df['funded_amnt_inv']))"
-        },
-        {
-          "option": 3,
-          "action": "Decline changes",
-          "confidence": 100,
-          "rationale": "No remediation will be applied, but this decision is recorded for audit purposes.",
-          "caveats": "The issue remains unresolved, and data integrity may be compromised.",
-          "pyspark_code": "# No change applied to df"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 93.4,
-      "after": 95.0,
-      "delta": 1.6
-    }
-  },
-  {
-    "input": {
-      "column": "int_rate",
-      "issue_type": "Statistical Outlier",
-      "severity": "MEDIUM",
-      "detail": "41099 outlier(s) (1.8% of rows). IQR bounds: [-0.26, 25.74]",
-      "sample_values": "[25.89, 25.89, 25.8, 25.8, 25.8]"
-    },
-    "diagnosis": {
-      "root_cause": "Data entry errors or systematic issues with interest rate calculations may have led to unrealistic outlier values in the dataset.",
-      "business_impact": "The presence of outliers can skew analytics and reporting, leading to inaccurate insights and potentially flawed decision-making in risk assessment and pricing models.",
-      "priority_score": 4,
-      "affected_rows_percent": 1.8
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Cap outliers to upper limit",
-          "confidence": 85,
-          "rationale": "Capping interest rates helps maintain data integrity while limiting skewing effects on financial analytics.",
-          "caveats": "Assumes that all interest rates above 25.74 are erroneous and should be corrected.",
-          "pyspark_code": "df = df.withColumn('int_rate', F.when(df.int_rate > 25.74, 25.74).otherwise(df.int_rate))"
-        },
-        {
-          "option": 2,
-          "action": "Cap outliers at IQR upper bound",
-          "confidence": 65,
-          "rationale": "This method controls outlier impact while keeping most useful data intact.",
-          "caveats": "It may not address the underlying causes of outliers in the dataset, only their impact.",
-          "pyspark_code": "df = df.withColumn('int_rate', F.when(df.int_rate > 25.74, 25.74).otherwise(df.int_rate))"
-        },
-        {
-          "option": 3,
-          "action": "Decline changes",
-          "confidence": 100,
-          "rationale": "No remediation will be applied at this time, and the decision is captured for audit purposes.",
-          "caveats": "The issue remains unresolved, which may affect data quality.",
-          "pyspark_code": "# No change applied to df"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 93.4,
-      "after": 95.2,
-      "delta": 1.8
+      "before": 50.0,
+      "after": 60.0,
+      "delta": 10.0
     }
   }
 ]

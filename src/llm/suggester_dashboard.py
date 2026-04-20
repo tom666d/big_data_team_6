@@ -617,7 +617,7 @@ for issue in issues:
 
     # Router
     strategy = route_issue(issue)
-    print(f"  Router → strategy: {strategy}")
+    print(f"  Router -> strategy: {strategy}")
 
     # Agent 1: root cause from LLM
     root_cause_result = diagnose_root_cause(issue)
@@ -634,7 +634,7 @@ for issue in issues:
     }
 
     print(
-        f"  Agent 1 done → priority_score={diagnosis_result['priority_score']}, "
+        f"  Agent 1 done -> priority_score={diagnosis_result['priority_score']}, "
         f"affected_rows_percent={diagnosis_result['affected_rows_percent']}"
     )
 
@@ -643,7 +643,7 @@ for issue in issues:
 
     # Agent 2 + Critic
     remediation_result = generate_remediation_with_critic(issue, diagnosis_result, historical_context)
-    print(f"  Agent 2 done → generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
+    print(f"  Agent 2 done -> generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
 
     # Week 2 quality score
     quality_score_result = compute_quality_scores_for_issue(
@@ -652,7 +652,7 @@ for issue in issues:
         TOTAL_ROWS
     )
     print(
-        f"  Quality score → before={quality_score_result['before']}, "
+        f"  Quality score -> before={quality_score_result['before']}, "
         f"after={quality_score_result['after']}, "
         f"delta={quality_score_result['delta']}"
     )

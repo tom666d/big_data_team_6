@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 import subprocess
 import sys
+demo = True
 
 # ── Page config ──────────────────────────────────────
 st.set_page_config(
@@ -56,6 +57,7 @@ with st.sidebar:
     st.info("Simulate data quality degradation for the live presentation.")
     
     if st.button("💉 Inject Anomalies (Live Demo)"):
+        
         try:
             import pandas as pd
             import numpy as np
@@ -132,17 +134,25 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Step 1: 🔎 Run Detector", use_container_width=True):
-             with st.spinner("Running suggester..."):
+             with st.spinner("Running detector..."):
                 # This version prints all the outputs from the original file
                 # More informative, but it does clutter the dashboard a bit
                 # I made the other button just use the spinning icon to show what that looks like
                 # But either one can easily be changed
-                process = subprocess.Popen(
-                    ["python", "-u", "src/detection/detector_dashboard.py", save_path],
+                if demo:
+                    process = subprocess.Popen(
+                    ["python", "-u", "src/detection/detector_dashboard.py", "data/demo_lendingclub.csv"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
                 )
+                else:
+                    process = subprocess.Popen(
+                        ["python", "-u", "src/detection/detector_dashboard.py", save_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                    )
                 
                 output_area = st.empty()
                 log = ""

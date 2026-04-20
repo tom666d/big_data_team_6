@@ -308,6 +308,20 @@ def format_historical_context(issue_type: str, history: dict[str, list[dict[str,
 
     return "\n".join(lines)
 
+# =========================
+# Router Agent
+# =========================
+def route_issue(issue: dict[str, Any]) -> str:
+    """
+    Router: maps issue_type to a handling strategy.
+    Returns a strategy string passed to Agent 1 to sharpen the prompt.
+    """
+    routing_map = {
+        "Null Spike": "imputation",
+        "Statistical Outlier": "statistical",
+        "Format Inconsistency": "standardization",
+    }
+    return routing_map.get(issue.get("issue_type", ""), "general")
 
 # =========================
 # Agent 1: Root Cause only
@@ -371,13 +385,19 @@ Return exactly this format:
 def generate_remediation(
     issue: dict[str, Any],
     diagnosis: dict[str, Any],
-    historical_context: str
+    historical_context: str,
+    critic_feedback: str = ""
 ) -> dict[str, Any]:
-    """
-    Agent 2:
-    Input = detector issue + Agent 1 diagnosis + historical feedback.
-    Output = remediation suggestions with runnable PySpark fix code.
-    """
+
+    # Build critic feedback block BEFORE the prompt f-string
+    critic_feedback_block = ""
+    if critic_feedback:
+        critic_feedback_block = f"""
+Previous attempt was rejected by the quality checker:
+{critic_feedback}
+Please fix the issue and regenerate.
+"""
+
     prompt = f"""
 You are Agent 2 in a two-agent data quality remediation workflow.
 
@@ -399,7 +419,7 @@ Affected Rows Percent: {diagnosis['affected_rows_percent']}
 
 Historical decisions for this issue type:
 {historical_context}
-
+{critic_feedback_block}
 Requirements:
 1. Generate exactly 3 remediation suggestions.
 2. Option 1 and Option 2 must be actual remediation actions.
@@ -501,7 +521,58 @@ Return exactly this format:
     )
 
     return json.loads(response.choices[0].message.content)
+# =========================
+# Critic Agent
+# =========================
+def critic_check(remediation: dict[str, Any]) -> tuple[bool, str]:
+    """
+    Critic: validates Agent 2 output against quality rules.
+    Returns (passed, feedback).
+    """
+    suggestions = remediation.get("suggestions", [])
 
+    if len(suggestions) != 3:
+        return False, f"Expected 3 suggestions, got {len(suggestions)}"
+
+    for s in suggestions:
+        if not s.get("pyspark_code") or s["pyspark_code"].strip() == "":
+            return False, f"Option {s['option']} missing pyspark_code"
+        if s.get("option") != 3 and "df" not in s.get("pyspark_code", ""):
+            return False, f"Option {s['option']} pyspark_code does not reference 'df'"
+        if not isinstance(s.get("confidence"), int):
+            return False, f"Option {s['option']} confidence must be an integer"
+
+    option3 = next((s for s in suggestions if s["option"] == 3), None)
+    if not option3 or option3.get("action") != "Decline changes":
+        return False, "Option 3 must be 'Decline changes'"
+
+    return True, "OK"
+
+
+def generate_remediation_with_critic(
+    issue: dict[str, Any],
+    diagnosis: dict[str, Any],
+    historical_context: str,
+    max_retries: int = 2
+) -> dict[str, Any]:
+    """
+    Agent 2 + Critic loop: retries up to max_retries times if quality check fails.
+    """
+    feedback = ""
+
+    for attempt in range(max_retries + 1):
+        result = generate_remediation(issue, diagnosis, historical_context, feedback)
+        passed, feedback = critic_check(result)
+
+        if passed:
+            if attempt > 0:
+                print(f"  Critic passed on attempt {attempt + 1}")
+            return result
+
+        print(f"  Critic failed (attempt {attempt + 1}): {feedback}")
+
+    print(f"  Critic: max retries reached, returning last result")
+    return result
 
 # =========================
 # Build layered output
@@ -544,6 +615,10 @@ results = []
 for issue in issues:
     print(f"Processing: [{issue['severity']}] {issue['column']} — {issue['issue_type']}")
 
+    # Router
+    strategy = route_issue(issue)
+    print(f"  Router → strategy: {strategy}")
+
     # Agent 1: root cause from LLM
     root_cause_result = diagnose_root_cause(issue)
 
@@ -566,8 +641,8 @@ for issue in issues:
     # Historical context for Agent 2
     historical_context = format_historical_context(issue["issue_type"], historical_feedback)
 
-    # Agent 2
-    remediation_result = generate_remediation(issue, diagnosis_result, historical_context)
+    # Agent 2 + Critic
+    remediation_result = generate_remediation_with_critic(issue, diagnosis_result, historical_context)
     print(f"  Agent 2 done → generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
 
     # Week 2 quality score

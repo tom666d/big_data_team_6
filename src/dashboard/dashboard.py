@@ -29,13 +29,17 @@ def save_decision_to_history(issue, selected_option, action_type="Approved"):
 
     # Create a new record based on user selection
     new_record = {
-        "column": issue["input"]["column"],
-        "issue_type": issue["input"]["issue_type"],
-        "selected_action": selected_option["action"] if selected_option else "Declined",
-        "pyspark_code": selected_option.get("pyspark_code", "") if selected_option else None,
-        "decision_type": action_type,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
+    "column": issue["input"]["column"],
+    "issue_type": issue["input"]["issue_type"],
+    "chosen_action": selected_option["action"] if selected_option else "Declined",
+    "chosen_rationale": selected_option.get("rationale", "") if selected_option else "",
+    "chosen_caveats": selected_option.get("caveats", "") if selected_option else "",
+    "chosen_confidence": selected_option.get("confidence", 0) if selected_option else 0,
+    "detail_summary": issue["input"]["detail"],
+    "pyspark_code": selected_option.get("pyspark_code", "") if selected_option else "",
+    "decision_type": action_type,
+    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+}
     
     history.append(new_record)
 
@@ -112,7 +116,7 @@ with tab1:
                 st.write("**Impact Analysis:**")
                 impact = issue.get("diagnosis", {})
                 st.caption(f"- Business Risk: {impact.get('business_impact', 'N/A')}")
-                st.caption(f"- Affected rows: {impact.get('affected_percent', 'N/A')}%")
+                st.caption(f"- Affected rows: {impact.get('affected_rows_percent', 'N/A')}%")
 
             st.divider()
             st.write("**💡 AI Suggestions:**")

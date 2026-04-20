@@ -4,12 +4,12 @@
       "column": "loan_amnt",
       "issue_type": "Null Spike",
       "severity": "HIGH",
-      "detail": "Null rate: 40% (40037/100000 rows)",
+      "detail": "Null rate: 40% (40000/100000 rows)",
       "sample_values": "[3600.0, 24700.0, 20000.0]"
     },
     "diagnosis": {
-      "root_cause": "Inadequate data collection processes or system errors leading to missing loan amount entries during data ingestion.",
-      "business_impact": "High null rates can skew analytics results, impair reporting accuracy, and negatively affect predictive modeling for loan approvals.",
+      "root_cause": "The high null rate may stem from data entry errors or incomplete data submissions from loan originators, leading to missing values in the loan amount column.",
+      "business_impact": "This significant level of missing data can skew analytics, compromise report accuracy, and degrade the performance of predictive models, potentially affecting lending decisions.",
       "priority_score": 8,
       "affected_rows_percent": 40.0
     },
@@ -17,82 +17,34 @@
       "suggestions": [
         {
           "option": 1,
-          "action": "Impute with Mean",
+          "action": "Replace nulls with median",
           "confidence": 85,
-          "rationale": "Imputing missing loan amounts with the mean will maintain overall dataset size and prevent loss of valuable information.",
-          "caveats": "This method assumes loan amounts are normally distributed, which may not always be the case.",
-          "pyspark_code": "mean_value = df.select(avg('loan_amnt')).first()[0]\ndf = df.na.fill({'loan_amnt': mean_value})"
+          "rationale": "Replacing null values with the median is a reliable method to maintain data distribution and reduce bias in analytics.",
+          "caveats": "This assumes that the distribution of loan amounts is not heavily skewed, which may not be true in all cases.",
+          "pyspark_code": "df = df.fillna({'loan_amnt': df.approxQuantile('loan_amnt', [0.5], 0.0)[0]})"
         },
         {
           "option": 2,
-          "action": "Impute with Median",
+          "action": "Fill nulls with fixed value",
           "confidence": 65,
-          "rationale": "Using the median to fill in missing values can reduce the impact of outliers compared to the mean.",
-          "caveats": "This approach may not fully capture the nature of the missing data if it is not random.",
-          "pyspark_code": "median_value = df.approxQuantile('loan_amnt', [0.5], 0.0)[0]\ndf = df.na.fill({'loan_amnt': median_value})"
+          "rationale": "Filling nulls with a fixed value (e.g., 0) can be beneficial in certain cases, especially if considering loans that were not issued.",
+          "caveats": "Using a fixed value can distort trends and averages, potentially misrepresenting overall loan statistics.",
+          "pyspark_code": "df = df.fillna({'loan_amnt': 0})"
         },
         {
           "option": 3,
           "action": "Decline changes",
           "confidence": 100,
-          "rationale": "No remediation will be applied at this time, but this decision is recorded for audit purposes.",
-          "caveats": "The issue remains unresolved and may impact future analyses.",
+          "rationale": "No remediation will be applied at this time, and this decision is documented for future reference.",
+          "caveats": "The high null rate remains unresolved and may affect data quality and analysis outcomes.",
           "pyspark_code": "# No change applied to df"
         }
       ]
     },
     "quality_score": {
-      "before": 50.0,
-      "after": 90.0,
+      "before": 60.0,
+      "after": 100.0,
       "delta": 40.0
-    }
-  },
-  {
-    "input": {
-      "column": "funded_amnt",
-      "issue_type": "Statistical Outlier",
-      "severity": "MEDIUM",
-      "detail": "9959 outlier(s) (10.0% of rows). IQR bounds: [-13500.00, 46500.00]",
-      "sample_values": "[9999999.0, 9999999.0, 9999999.0, 9999999.0, 9999999.0]"
-    },
-    "diagnosis": {
-      "root_cause": "The presence of extreme outlier values, likely due to data entry errors or system integration issues that did not validate input correctly.",
-      "business_impact": "Such outliers can skew analysis and reporting, leading to inaccurate modeling and poor decision-making based on unreliable data.",
-      "priority_score": 5,
-      "affected_rows_percent": 10.0
-    },
-    "remediation": {
-      "suggestions": [
-        {
-          "option": 1,
-          "action": "Replace outliers with median",
-          "confidence": 85,
-          "rationale": "Replacing outliers with the median is a standard practice that maintains data integrity while addressing extreme values.",
-          "caveats": "This approach assumes that the median is a representative value for the dataset.",
-          "pyspark_code": "median_val = df.approxQuantile('funded_amnt', [0.5], 0)[0]\ndf = df.withColumn('funded_amnt', F.when((df['funded_amnt'] < -13500) | (df['funded_amnt'] > 46500), median_val).otherwise(df['funded_amnt']))"
-        },
-        {
-          "option": 2,
-          "action": "Cap outliers",
-          "confidence": 65,
-          "rationale": "Capping outliers allows for a moderation of excessively high values while retaining original data structure.",
-          "caveats": "This method may still leave some extreme anomalies that could affect analysis.",
-          "pyspark_code": "df = df.withColumn('funded_amnt', F.when(df['funded_amnt'] < -13500, -13500).when(df['funded_amnt'] > 46500, 46500).otherwise(df['funded_amnt']))"
-        },
-        {
-          "option": 3,
-          "action": "Decline changes",
-          "confidence": 100,
-          "rationale": "No remediation will be applied at this point, and the decision is documented for future audits.",
-          "caveats": "The outlier issue remains unresolved and could impact future analyses.",
-          "pyspark_code": "# No change applied to df"
-        }
-      ]
-    },
-    "quality_score": {
-      "before": 50.0,
-      "after": 60.0,
-      "delta": 10.0
     }
   }
 ]

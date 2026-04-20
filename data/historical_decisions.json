@@ -1,26 +1,14 @@
 [
   {
-    "column": "funded_amnt",
-    "issue_type": "Statistical Outlier",
-    "selected_action": "Declined",
-    "pyspark_code": null,
-    "decision_type": "Declined",
-    "timestamp": "2026-04-19 22:10:35"
-  },
-  {
     "column": "loan_amnt",
     "issue_type": "Null Spike",
-    "selected_action": "Replace nulls with median value",
-    "pyspark_code": "df = df.fillna({'loan_amnt': df.approxQuantile('loan_amnt', [0.5], 0)[0]})",
+    "chosen_action": "Replace nulls with median",
+    "chosen_rationale": "Replacing null values with the median is a reliable method to maintain data distribution and reduce bias in analytics.",
+    "chosen_caveats": "This assumes that the distribution of loan amounts is not heavily skewed, which may not be true in all cases.",
+    "chosen_confidence": 85,
+    "detail_summary": "Null rate: 40% (40000/100000 rows)",
+    "pyspark_code": "df = df.fillna({'loan_amnt': df.approxQuantile('loan_amnt', [0.5], 0.0)[0]})",
     "decision_type": "Approved",
-    "timestamp": "2026-04-19 22:28:24"
-  },
-  {
-    "column": "loan_amnt",
-    "issue_type": "Null Spike",
-    "selected_action": "Impute nulls using mean value",
-    "pyspark_code": "mean_loan_amnt = df.select(mean('loan_amnt')).first()[0]\ndf = df.fillna({'loan_amnt': mean_loan_amnt})",
-    "decision_type": "Approved",
-    "timestamp": "2026-04-19 22:28:26"
+    "timestamp": "2026-04-20 08:27:05"
   }
 ]

@@ -52,12 +52,38 @@ with st.sidebar:
     st.header("🚀 Demo Controls")
     st.info("Simulate data quality degradation for the live presentation.")
     
-    if st.button("Inject Anomalies (Live Demo)"):
-        # Simulated triggers for the presentation demo
-        st.warning("Injecting Null Spikes in 'loan_amnt'...")
-        st.warning("Injecting Outliers in 'annual_inc'...")
-        st.success("Anomalies Injected! Run detector.py to refresh.")
-        st.toast("Demo data corrupted successfully!")
+    if st.button("💉 Inject Anomalies (Live Demo)"):
+        try:
+            import pandas as pd
+            import numpy as np
+
+            df = pd.read_csv("data/demo_lendingclub.csv")
+
+            # Inject Null Spike into loan_amnt (~40% nulls)
+            null_idx = df.sample(frac=0.4, random_state=42).index
+            df.loc[null_idx, "loan_amnt"] = np.nan
+
+            # Inject Outliers into annual_inc
+            outlier_idx = df.sample(frac=0.08, random_state=99).index
+            df.loc[outlier_idx, "annual_inc"] = 9999999
+
+            # Inject Format Inconsistency into issue_d
+            if "issue_d" in df.columns:
+                mix_idx = df.sample(frac=0.3, random_state=7).index
+                df.loc[mix_idx, "issue_d"] = "01/2020"
+
+            df.to_csv("data/demo_lendingclub.csv", index=False)
+
+            st.warning("⚠️ Null Spikes injected into 'loan_amnt'")
+            st.warning("⚠️ Outliers injected into 'annual_inc'")
+            st.warning("⚠️ Format errors injected into 'issue_d'")
+            st.success("✅ Done — now run detector.py to refresh")
+            st.toast("Demo data corrupted successfully!")
+
+        except FileNotFoundError:
+            st.error("demo_lendingclub.csv not found in data/")
+        except Exception as e:
+            st.error(f"Injection failed: {e}")
 
     st.divider()
     st.subheader("System Status")
@@ -128,6 +154,7 @@ with tab1:
                 with col_a:
                     st.info(f"**Action:** {s['action']}")
                     st.write(f"**Rationale:** {s['rationale']}")
+                    st.caption(f"⚠️ Caveats: {s.get('caveats', 'N/A')}") 
                     st.write("**Generated PySpark Code:**")
                     st.code(s.get("pyspark_code", ""), language="python")
                     

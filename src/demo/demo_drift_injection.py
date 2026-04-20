@@ -26,7 +26,7 @@ print("✅ Injected outliers into funded_amnt")
 
 
 if LOCAL_MODE:
-    df.coalesce(1).write.mode("overwrite").option("header", True).csv("data/demo_lendingclub.csv")
+    df.toPandas().to_csv("data/demo_lendingclub.csv", index=False)
 else:
     df.write.mode("overwrite").saveAsTable("workspace.team6.demo_lendingclub")
 

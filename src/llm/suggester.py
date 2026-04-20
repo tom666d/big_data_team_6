@@ -259,10 +259,6 @@ def compute_quality_scores_for_issue(
 # Week 2: Historical Feedback
 # =========================
 def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
-    """
-    Load historical decisions grouped by issue_type.
-    Return empty dict if file does not exist, is empty, or is invalid JSON.
-    """
     if not path.exists():
         return {}
 
@@ -271,7 +267,22 @@ def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
             content = f.read().strip()
             if not content:
                 return {}
-            return json.loads(content)
+            data = json.loads(content)
+
+            
+            if isinstance(data, list):
+                converted = {}
+                for record in data:
+                    itype = record.get("issue_type", "unknown")
+                    converted.setdefault(itype, []).append(record)
+                return converted
+
+            
+            if isinstance(data, dict):
+                return data
+
+            return {}
+
     except json.JSONDecodeError:
         return {}
 

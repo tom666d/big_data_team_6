@@ -10,5 +10,41 @@
     "pyspark_code": "df = df.fillna({'loan_amnt': df.approxQuantile('loan_amnt', [0.5], 0.0)[0]})",
     "decision_type": "Approved",
     "timestamp": "2026-04-20 08:27:05"
+  },
+  {
+    "column": "loan_amnt",
+    "issue_type": "Null Spike",
+    "chosen_action": "Decline changes",
+    "chosen_rationale": "No remediation will be applied, and this decision is recorded for auditing purposes.",
+    "chosen_caveats": "The issue with null values remains unresolved.",
+    "chosen_confidence": 100,
+    "detail_summary": "Null rate: 40% (40000/100000 rows)",
+    "pyspark_code": "# No change applied to df",
+    "decision_type": "Approved",
+    "timestamp": "2026-04-20 10:39:16"
+  },
+  {
+    "column": "loan_amnt",
+    "issue_type": "Null Spike",
+    "chosen_action": "Declined",
+    "chosen_rationale": "",
+    "chosen_caveats": "",
+    "chosen_confidence": 0,
+    "detail_summary": "Null rate: 40% (40000/100000 rows)",
+    "pyspark_code": "",
+    "decision_type": "Declined",
+    "timestamp": "2026-04-20 10:39:19"
+  },
+  {
+    "column": "loan_amnt",
+    "issue_type": "Null Spike",
+    "chosen_action": "Decline changes",
+    "chosen_rationale": "No remediation will be applied, and this decision is recorded for auditing purposes.",
+    "chosen_caveats": "The issue with null values remains unresolved.",
+    "chosen_confidence": 100,
+    "detail_summary": "Null rate: 40% (40000/100000 rows)",
+    "pyspark_code": "# No change applied to df",
+    "decision_type": "Approved",
+    "timestamp": "2026-04-20 10:39:22"
   }
 ]

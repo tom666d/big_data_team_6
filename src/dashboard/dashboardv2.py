@@ -5,10 +5,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime, timedelta
-import streamlit as st
 import subprocess
 import sys
-demo = True
 
 # ── Page config ──────────────────────────────────────
 st.set_page_config(
@@ -16,6 +14,17 @@ st.set_page_config(
     page_icon="🔍",
     layout="wide"
 )
+
+st.markdown("""
+<style>
+    [data-testid="stMetric"] {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ── [UPDATE] [FEEDBACK LOOP] Write decision to JSON ───
 def save_decision_to_history(issue, selected_option, action_type="Approved"):
@@ -53,8 +62,13 @@ def save_decision_to_history(issue, selected_option, action_type="Approved"):
 
 # ── [UPDATE] Sidebar: Live injection demo ─────
 with st.sidebar:
+    st.image("src\streamlit_assets\genie20.png", caption="The Data Genie")
     st.header("🚀 Demo Controls")
     st.info("Simulate data quality degradation for the live presentation.")
+
+    # ── Dataset toggle ────────────────────────────────
+    demo = st.toggle("Use Demo Dataset", value=True,
+                      help="ON = use demo_lendingclub.csv  •  OFF = use your uploaded file")
     
     if st.button("💉 Inject Anomalies (Live Demo)"):
         
@@ -94,8 +108,18 @@ with st.sidebar:
     st.subheader("System Status")
     st.write("**Role:** Analytics Consultant")
     st.write("**Environment:** Databricks / Local")
+    st.write(f"**Dataset Mode:** {'🟢 Demo' if demo else '🔵 Uploaded'}")
 
-st.title("🔍 Data Quality Remediation Assistant")
+col1, col2 = st.columns([1, 8])
+
+with col1:
+    # Use st.image for the logo
+    st.image("src\streamlit_assets\magiclamp.png")#, width=60)
+
+with col2:
+    # Use st.title for the text
+    st.title("The Data Genie")
+
 st.caption("AI-Driven Anomaly Detection & ETL Fix Generation at Scale")
 
 # ── Load issues ──────────────────────────────────────
@@ -147,6 +171,9 @@ with tab1:
                     text=True,
                 )
                 else:
+                    if not uploaded_file:
+                        st.warning("⚠️ No file uploaded — toggle 'Use Demo Dataset' on, or upload a file first.")
+                        st.stop()
                     process = subprocess.Popen(
                         ["python", "-u", "src/detection/detector_dashboard.py", save_path],
                         stdout=subprocess.PIPE,
@@ -182,7 +209,7 @@ with tab1:
                 st.error(f"Suggester failed:\n{result.stderr}")
                 st.code(result.stderr, language="text")
     
-    st.divider()
+
 
     if os.path.exists("data/issues_with_suggestions.json"):
         with open("data/issues_with_suggestions.json") as f:
@@ -241,17 +268,6 @@ with tab1:
                         save_decision_to_history(issue, s, action_type="Approved")
                         st.success("Decision Logged to History!")
                         st.toast(f"Saved selection for {issue['input']['column']}")
-
-            # [UPDATE] [FEEDBACK LOOP] Decline button to capture non-remediation decisions
-
-            ## This button is redundant
-            #if st.button("❌ Decline All Changes", key=f"dec_{i}", use_container_width=True):
-                #st.session_state.decisions[issue["input"]["column"]] = {
-                    #"action": "Declined",
-                    #"confidence": 0
-                #}
-                #save_decision_to_history(issue, None, action_type="Declined")
-                #st.error("Issue Declined and Logged.")
 
     # ── Audit trail ──
     if st.session_state.decisions:

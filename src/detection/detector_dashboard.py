@@ -140,7 +140,7 @@ for col_name in NUMERIC_COLS:
 print("\n[SCAN] Detecting Format Inconsistencies...")
 if "issue_d" in df.columns:
     iso_pattern = r"^[A-Za-z]{3}-\d{2}$" 
-    us_pattern  = r"^[A-Za-z]{3}-\d{2}$"
+    us_pattern  = r"^\d{2}/\d{4}$" 
 
     iso_count = df.filter(regexp_extract(col("issue_d"), iso_pattern, 0) != "").count()
     us_count  = df.filter(regexp_extract(col("issue_d"), us_pattern,  0) != "").count()

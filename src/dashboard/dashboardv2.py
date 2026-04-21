@@ -62,7 +62,7 @@ def save_decision_to_history(issue, selected_option, action_type="Approved"):
 
 # ── [UPDATE] Sidebar: Live injection demo ─────
 with st.sidebar:
-    st.image("src\streamlit_assets\genie20.png", caption="The Data Genie")
+    st.image("src/streamlit_assets/genie20.png", caption="The Data Genie")
     st.header("🚀 Demo Controls")
     st.info("Simulate data quality degradation for the live presentation.")
 
@@ -114,7 +114,7 @@ col1, col2 = st.columns([1, 8])
 
 with col1:
     # Use st.image for the logo
-    st.image("src\streamlit_assets\magiclamp.png")#, width=60)
+    st.image("src/streamlit_assets/magiclamp.png")#, width=60)
 
 with col2:
     # Use st.title for the text

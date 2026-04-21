@@ -31,6 +31,13 @@ st.markdown("""
         border-left-color: #ffffff;
         border-radius: 10px;
     }
+            
+    [data-testid="stContainer"] {
+    background-color: #ffffff
+    border-color: #252d44 !important;
+    border-radius: 10px;
+    padding: 16px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -173,6 +180,7 @@ with tab1:
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {save_path}")
+        
     st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
@@ -237,14 +245,17 @@ with tab1:
         avg_delta = avg_after - avg_before
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0  
-    st.divider()
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Issues Detected", len(issues))
-    col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
-    col3.metric("Avg Quality Score (Before)", f"{avg_before:.1f}%") 
-    col4.metric("Estimated Quality Score (After)", f"{avg_after:.1f}%", f"{avg_delta:+.1f}%")
-    st.divider()
-
+    #st.divider()
+    st.space("small")
+    with st.container(border = True):
+        st.subheader("Data Summary", text_alignment = "center")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Issues Detected", len(issues))
+        col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
+        col3.metric("Avg Quality Score (Before)", f"{avg_before:.1f}%") 
+        col4.metric("Estimated Quality Score (After)", f"{avg_after:.1f}%", f"{avg_delta:+.1f}%")
+    #st.divider()
+    st.space("small")
     # ── Session state for decisions ──
     if "decisions" not in st.session_state:
         st.session_state.decisions = {}

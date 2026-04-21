@@ -10,7 +10,7 @@
     "column": "annual_inc",
     "issue_type": "Statistical Outlier",
     "severity": "MEDIUM",
-    "detail": "10900 outlier(s) (10.9% of rows). IQR bounds: [-29250.00, 180750.00]",
+    "detail": "10904 outlier(s) (10.9% of rows). IQR bounds: [-28000.00, 180000.00]",
     "sample_values": "[9999999.0, 9999999.0, 9999999.0, 195000.0, 9999999.0]"
   },
   {

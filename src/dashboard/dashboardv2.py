@@ -11,7 +11,7 @@ import sys
 # ── Page config ──────────────────────────────────────
 st.set_page_config(
     page_title="Data Quality Remediation Assistant",
-    page_icon="🔍",
+    page_icon="src/streamlit_assets/magiclamp.png",
     layout="wide"
 )
 
@@ -22,6 +22,14 @@ st.markdown("""
         display: flex;
         flex-direction: column;
         align-items: center;
+    }
+            
+    /* ── Sidebar info box ── */
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        background-color: #ffffff;;
+        color: #ffffff;
+        border-left-color: #ffffff;
+        border-radius: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -59,6 +67,7 @@ def save_decision_to_history(issue, selected_option, action_type="Approved"):
     # Save back to JSON
     with open(history_path, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
+
 
 # ── [UPDATE] Sidebar: Live injection demo ─────
 with st.sidebar:
@@ -155,7 +164,7 @@ with tab1:
         avg_before, avg_after, avg_delta = 0, 0, 0
 
     st.subheader("📁 Upload Data File")
-    uploaded_file = st.file_uploader("Upload data here:", type=["csv", "json", "parquet"])
+    uploaded_file = st.file_uploader(" ",type=["csv", "json", "parquet"])
 
     if uploaded_file:
         # Save to the expected location
@@ -164,61 +173,58 @@ with tab1:
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {save_path}")
-
+    st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Step 1: 🔎 Run Detector", use_container_width=True):
-             with st.spinner("Running detector..."):
-                # This version prints all the outputs from the original file
-                # More informative, but it does clutter the dashboard a bit
-                # I made the other button just use the spinning icon to show what that looks like
-                # But either one can easily be changed
-                if demo:
-                    process = subprocess.Popen(
-                    ["/opt/anaconda3/bin/python3", "-u", "src/detection/detector_dashboard.py", "data/demo_lendingclub.csv"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    text=True,
-                )
-                else:
-                    if not uploaded_file:
-                        st.warning("⚠️ No file uploaded — toggle 'Use Demo Dataset' on, or upload a file first.")
-                        st.stop()
-                    process = subprocess.Popen(
-                        ["/opt/anaconda3/bin/python3", "-u", "src/detection/detector_dashboard.py", save_path],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.DEVNULL,
-                        text=True,
-                    )
-                
-                output_area = st.empty()
-                log = ""
-                
+        if st.button("Step 1: 🔎 Detect Anomalous Data", use_container_width=True):
+            if demo:
+                cmd = ["python", "-u", "src/detection/detector_dashboard.py",
+                    "data/demo_lendingclub.csv"]
+            else:
+                if not uploaded_file:
+                    st.warning("No file uploaded — toggle 'Use Demo Dataset' on, "
+                            "or upload a file first.")
+                    st.stop()
+                cmd = ["python", "-u", "src/detection/detector_dashboard.py", save_path]
+
+            with st.spinner("Running detector..."):
+                progress = st.progress(0)
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, text=True)
+                lines = []
                 for line in process.stdout:
-                    log += line
-                    output_area.code(log, language="text")
-                
+                    lines.append(line)
+                    pct = min(90, len(lines) * 5)
+                    progress.progress(pct)
                 process.wait()
-                
+
                 if process.returncode == 0:
+                    progress.progress(100)
                     st.success("Detector finished!")
                 else:
-                    st.error(f"Detector failed:\n{process.stderr.read()}")
+                    st.error("Detector failed")
 
     with col2:
-        if st.button("Step 2: \n💡 Run Suggester", use_container_width=True):
+        if st.button("Step 2: 💡 Generate Remediation Options", use_container_width=True):
+            cmd = ["python", "src/llm/suggester_dashboard.py"]
+
             with st.spinner("Running suggester..."):
-                result = subprocess.run(
-                    ["/opt/anaconda3/bin/python3", "src/llm/suggester_dashboard.py"],
-                    capture_output=True, text=True
-                )
-            if result.returncode == 0:
-                st.success("Suggester finished!")
-                st.code(result.stdout, language="text")
-            else:
-                st.error(f"Suggester failed:\n{result.stderr}")
-                st.code(result.stderr, language="text")
+                progress = st.progress(0)
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, text=True)
+                lines = []
+                for line in process.stdout:
+                    lines.append(line)
+                    pct = min(90, len(lines) * 5)
+                    progress.progress(pct)
+                process.wait()
+
+                if process.returncode == 0:
+                    progress.progress(100)
+                    st.success("Suggester finished!")
+                else:
+                    st.error("Suggester failed")
     
 
 
@@ -244,7 +250,7 @@ with tab1:
         st.session_state.decisions = {}
 
     # ── Issue cards ──
-    st.subheader("📋 Detected Issues")
+    st.subheader("📋 Issues and Suggested Actions")
 
     for i, issue in enumerate(issues):
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
@@ -253,10 +259,10 @@ with tab1:
         with st.expander(f"{color} [P{priority}] {issue['input']['column']} — {issue['input']['issue_type']}", expanded=True):
             col_info1, col_info2 = st.columns(2)
             with col_info1:
-                st.write(f"**Detail:** {issue['input']['detail']}")
+                st.write(f"**Anomaly Details:** {issue['input']['detail']}")
                 st.write(f"**Sample Values:** `{issue['input']['sample_values']}`")
             with col_info2:
-                st.write("**Impact Analysis:**")
+                st.write("**Impact Analysis**")
                 impact = issue.get("diagnosis", {})
                 st.caption(f"- Business Risk: {impact.get('business_impact', 'N/A')}")
                 st.caption(f"- Affected rows: {impact.get('affected_rows_percent', 'N/A')}%")

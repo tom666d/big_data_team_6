@@ -8,8 +8,8 @@
       "sample_values": "[3600.0, 24700.0, 20000.0]"
     },
     "diagnosis": {
-      "root_cause": "There may be a failure in data collection or integration processes, leading to incomplete loan amount entries.",
-      "business_impact": "High null rates can skew analytics and reporting, leading to inaccurate loan performance assessments and flawed predictive modeling.",
+      "root_cause": "Inadequate data input validation or integration issues causing missing loan amount entries during data ingestion.",
+      "business_impact": "High null rates can lead to skewed analytics, unreliable reporting, and compromised model accuracy for loan risk assessments.",
       "priority_score": 8,
       "affected_rows_percent": 40.0
     },
@@ -19,32 +19,128 @@
           "option": 1,
           "action": "Replace nulls with median",
           "confidence": 85,
-          "rationale": "Replacing null values with the median is a reliable method to maintain data distribution and reduce bias in analytics.",
-          "caveats": "This assumes that the distribution of loan amounts is not heavily skewed, which may not be true in all cases.",
-          "pyspark_code": "df = df.fillna(df.approxQuantile('loan_amnt', [0.5], 0.25)[0], subset=['loan_amnt'])"
+          "rationale": "Replacing null values with the median is a reliable method to maintain data distribution.",
+          "caveats": "This assumes that the distribution of loan amounts is not heavily skewed.",
+          "pyspark_code": "median_value = df.approxQuantile('loan_amnt', [0.5], 0.01)[0]\ndf = df.fillna({'loan_amnt': median_value})"
         },
         {
           "option": 2,
           "action": "Replace nulls with mean",
           "confidence": 65,
-          "rationale": "Filling null values with the mean can help mitigate the impact of missing data on analytics.",
-          "caveats": "This may distort the data if there are outliers affecting the mean.",
-          "pyspark_code": "mean_value = df.select({'loan_amnt'}).groupBy().mean().first()[0]; df = df.fillna(mean_value, subset=['loan_amnt'])"
+          "rationale": "Using the mean to fill null values can provide a quick remedy for enhancing data completeness.",
+          "caveats": "This may distort data if the loan amounts are not normally distributed.",
+          "pyspark_code": "mean_value = df.select('loan_amnt').na.drop().agg({'loan_amnt': 'mean'}).first()[0]\ndf = df.fillna({'loan_amnt': mean_value})"
         },
         {
           "option": 3,
           "action": "Decline changes",
           "confidence": 100,
-          "rationale": "No remediation will be applied, and this decision is recorded for auditing purposes.",
+          "rationale": "No remediation will be applied and this decision is recorded for auditing purposes.",
           "caveats": "The issue with null values remains unresolved.",
           "pyspark_code": "# No change applied to df"
         }
       ]
     },
     "quality_score": {
-      "before": 60.0,
-      "after": 100.0,
+      "before": 19.1,
+      "after": 59.1,
       "delta": 40.0
+    }
+  },
+  {
+    "input": {
+      "column": "issue_d",
+      "issue_type": "Format Inconsistency",
+      "severity": "MEDIUM",
+      "detail": "Mixed formats: 70000 rows as YYYY-MM-DD, 30000 rows as MM/DD/YYYY",
+      "sample_values": "['Dec-2015', '01/2020', 'Dec-2015', 'Dec-2015', 'Dec-2015']"
+    },
+    "diagnosis": {
+      "root_cause": "Data entry procedures may lack standardization, allowing multiple date formats to be recorded without validation.",
+      "business_impact": "Inconsistent date formats can lead to erroneous analytics and reporting, potentially skewing insights and hindering decision-making.",
+      "priority_score": 6,
+      "affected_rows_percent": 30.0
+    },
+    "remediation": {
+      "suggestions": [
+        {
+          "option": 1,
+          "action": "Standardize to YYYY-MM-DD",
+          "confidence": 85,
+          "rationale": "This approach converts all dates to a single format (YYYY-MM-DD), improving consistency in the dataset.",
+          "caveats": "Assumes all MM/DD/YYYY formats are valid and can be accurately converted without data loss.",
+          "pyspark_code": "from pyspark.sql.functions import col, to_date\n\ndf = df.withColumn('issue_d',\n    to_date(col('issue_d'), 'MM/dd/yyyy').otherwise(to_date(col('issue_d'), 'yyyy-MM-dd')))"
+        },
+        {
+          "option": 2,
+          "action": "Convert all dates to MM/DD/YYYY format",
+          "confidence": 65,
+          "rationale": "This method transforms all date formats into MM/DD/YYYY, a common format, ensuring uniformity.",
+          "caveats": "There is a risk of incorrect conversions for dates that don't conform or for invalid MM/DD/YYYY formats.",
+          "pyspark_code": "from pyspark.sql.functions import col, date_format\n\ndf = df.withColumn('issue_d',\n    date_format(to_date(col('issue_d'), 'yyyy-MM-dd'), 'MM/dd/yyyy').otherwise(col('issue_d')))"
+        },
+        {
+          "option": 3,
+          "action": "Decline changes",
+          "confidence": 100,
+          "rationale": "No remediation will be applied, preserving the original data for potential future analysis.",
+          "caveats": "The issue remains unresolved, which may affect future analytics and reporting.",
+          "pyspark_code": "# No change applied to df"
+        }
+      ]
+    },
+    "quality_score": {
+      "before": 19.1,
+      "after": 49.1,
+      "delta": 30.0
+    }
+  },
+  {
+    "input": {
+      "column": "annual_inc",
+      "issue_type": "Statistical Outlier",
+      "severity": "MEDIUM",
+      "detail": "10900 outlier(s) (10.9% of rows). IQR bounds: [-29250.00, 180750.00]",
+      "sample_values": "[9999999.0, 9999999.0, 9999999.0, 195000.0, 9999999.0]"
+    },
+    "diagnosis": {
+      "root_cause": "Inconsistent data entry or system errors leading to inappropriate values being captured as annual income.",
+      "business_impact": "The presence of outliers can skew average income calculations, affecting budgeting, forecasting, and decision-making processes.",
+      "priority_score": 5,
+      "affected_rows_percent": 10.9
+    },
+    "remediation": {
+      "suggestions": [
+        {
+          "option": 1,
+          "action": "Cap extreme values",
+          "confidence": 85,
+          "rationale": "Capping outlier values at the IQR bounds will prevent distortion in income calculations.",
+          "caveats": "Assumes that capping does not misrepresent legitimate high-income values.",
+          "pyspark_code": "df = df.withColumn('annual_inc', F.when(df['annual_inc'] < -29250.00, -29250.00).when(df['annual_inc'] > 180750.00, 180750.00).otherwise(df['annual_inc']))"
+        },
+        {
+          "option": 2,
+          "action": "Remove outliers",
+          "confidence": 65,
+          "rationale": "Removing rows with annual income outside IQR bounds can improve data quality.",
+          "caveats": "This approach risks losing potentially valid data points, especially high earners.",
+          "pyspark_code": "df = df.filter((df['annual_inc'] >= -29250.00) & (df['annual_inc'] <= 180750.00))"
+        },
+        {
+          "option": 3,
+          "action": "Decline changes",
+          "confidence": 100,
+          "rationale": "No remediation will be applied at this time; decision is captured for audit purposes.",
+          "caveats": "The issue of outliers remains unresolved and may continue to affect analysis.",
+          "pyspark_code": "# No change applied to df"
+        }
+      ]
+    },
+    "quality_score": {
+      "before": 19.1,
+      "after": 30.0,
+      "delta": 10.9
     }
   }
 ]

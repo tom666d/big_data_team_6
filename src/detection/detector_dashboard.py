@@ -89,6 +89,7 @@ NUMERIC_COLS = [
     "funded_amnt_inv",
     "int_rate",
     "emp_length_numeric",
+    "annual_inc"
 ]
 
 for col_name in NUMERIC_COLS:
@@ -139,7 +140,7 @@ for col_name in NUMERIC_COLS:
 # ── Detection 3: Format Inconsistency (issue_d) ──────────────────────────
 print("\n[SCAN] Detecting Format Inconsistencies...")
 if "issue_d" in df.columns:
-    iso_pattern = r"^[A-Za-z]{3}-\d{2}$" 
+    iso_pattern = r"^[A-Za-z]{3}-\d{4}$" 
     us_pattern  = r"^\d{2}/\d{4}$" 
 
     iso_count = df.filter(regexp_extract(col("issue_d"), iso_pattern, 0) != "").count()

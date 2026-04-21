@@ -69,7 +69,18 @@ with st.sidebar:
     # ── Dataset toggle ────────────────────────────────
     demo = st.toggle("Use Demo Dataset", value=True,
                       help="ON = use demo_lendingclub.csv  •  OFF = use your uploaded file")
+    if st.button("🔄 Reset Demo"):
+        import shutil
+        shutil.copy("data/demo_lendingclub_backup.csv", "data/demo_lendingclub.csv")
     
+        with open("data/issues_with_suggestions.json", "w") as f:
+            json.dump([], f)
+        with open("data/issues_output.json", "w") as f:
+            json.dump([], f)
+    
+        st.success("✅ Demo reset to clean state")
+        st.rerun()
+
     if st.button("💉 Inject Anomalies (Live Demo)"):
         
         try:
@@ -165,7 +176,7 @@ with tab1:
                 # But either one can easily be changed
                 if demo:
                     process = subprocess.Popen(
-                    ["python", "-u", "src/detection/detector_dashboard.py", "data/demo_lendingclub.csv"],
+                    ["/opt/anaconda3/bin/python3", "-u", "src/detection/detector_dashboard.py", "data/demo_lendingclub.csv"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
@@ -175,7 +186,7 @@ with tab1:
                         st.warning("⚠️ No file uploaded — toggle 'Use Demo Dataset' on, or upload a file first.")
                         st.stop()
                     process = subprocess.Popen(
-                        ["python", "-u", "src/detection/detector_dashboard.py", save_path],
+                        ["/opt/anaconda3/bin/python3", "-u", "src/detection/detector_dashboard.py", save_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.DEVNULL,
                         text=True,
@@ -199,7 +210,7 @@ with tab1:
         if st.button("Step 2: \n💡 Run Suggester", use_container_width=True):
             with st.spinner("Running suggester..."):
                 result = subprocess.run(
-                    ["python", "src/llm/suggester_dashboard.py"],
+                    ["/opt/anaconda3/bin/python3", "src/llm/suggester_dashboard.py"],
                     capture_output=True, text=True
                 )
             if result.returncode == 0:
@@ -214,6 +225,12 @@ with tab1:
     if os.path.exists("data/issues_with_suggestions.json"):
         with open("data/issues_with_suggestions.json") as f:
             issues = json.load(f)
+    if issues:
+        avg_before = max(0, sum(i["quality_score"]["before"] for i in issues) / len(issues))
+        avg_after = min(95.0, max(0, sum(i["quality_score"]["after"] for i in issues) / len(issues)))
+        avg_delta = avg_after - avg_before
+    else:
+        avg_before, avg_after, avg_delta = 0, 0, 0  
     st.divider()
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Issues Detected", len(issues))

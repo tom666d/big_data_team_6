@@ -262,11 +262,26 @@ with tab1:
                 st.write(f"**Anomaly Details:** {issue['input']['detail']}")
                 st.write(f"**Sample Values:** `{issue['input']['sample_values']}`")
             with col_info2:
-                st.write("**Impact Analysis**")
                 impact = issue.get("diagnosis", {})
-                st.caption(f"- Business Risk: {impact.get('business_impact', 'N/A')}")
-                st.caption(f"- Affected rows: {impact.get('affected_rows_percent', 'N/A')}%")
-
+                st.markdown(
+                    f"""
+                    <div style="background:#E2E8E4; border-radius:8px; padding:12px;
+                                border:1px solid #252d44;">
+                        <div style="color:#000000; font-size:0.9rem; text-transform:uppercase;
+                                    letter-spacing:0.5px; margin-bottom:6px;">
+                            Impact Analysis
+                        </div>
+                        <div style="color:#000000; font-size:0.85rem; margin-bottom:4px;">
+                            Business Risk: <strong>{impact.get('business_impact', 'N/A')}</strong>
+                        </div>
+                        <div style="color:#000000; font-size:0.85rem;">
+                            Affected Rows:
+                            <strong>{impact.get('affected_rows_percent', 'N/A')}%</strong>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.divider()
             st.write("**💡 AI Suggestions:**")
 

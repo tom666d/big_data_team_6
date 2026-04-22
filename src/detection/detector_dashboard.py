@@ -6,12 +6,11 @@ import json
 import os
 import sys
 from pathlib import Path
+from databricks.connect.session import DatabricksSession
 
 
 # ── Start Spark ──────────────────────────────────────────────────────────────
-spark = SparkSession.builder \
-    .appName("DataQualityDetector") \
-    .getOrCreate()
+spark = DatabricksSession.builder.serverless().getOrCreate()
 
 
 # ── Helper: parse → numeric ───────────────────────────────

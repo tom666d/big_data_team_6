@@ -11,10 +11,12 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from pyspark.sql import SparkSession
+from databricks.connect.session import DatabricksSession
+
+
 
 # ── Runtime / paths ──────────────────────────────────────────────────────────
-spark = SparkSession.builder.getOrCreate()
+spark = DatabricksSession.builder.serverless().getOrCreate()
 
 APP_DIR = Path(__file__).resolve().parent
 REPO_DIR = APP_DIR.parent

@@ -1,0 +1,40 @@
+{
+  "Statistical Outlier": [
+    {
+      "column": "loan_amnt",
+      "chosen_option": 1,
+      "chosen_action": "Cap outliers to upper limit",
+      "chosen_rationale": "This method is highly effective at controlling the influence of outliers without losing potentially valuable data.",
+      "chosen_caveats": "Assumes that all loan amounts above the calculated upper bound are erroneous.",
+      "chosen_confidence": 85,
+      "detail_summary": "35215 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]"
+    },
+    {
+      "column": "funded_amnt",
+      "chosen_option": 1,
+      "chosen_action": "Cap outliers to upper limit",
+      "chosen_rationale": "Capping outliers helps maintain data integrity while limiting skewing effects on financial analytics.",
+      "chosen_caveats": "Assumes that all values above 38000 are erroneous and should be corrected.",
+      "chosen_confidence": 85,
+      "detail_summary": "35215 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]"
+    },
+    {
+      "column": "funded_amnt_inv",
+      "chosen_option": 1,
+      "chosen_action": "Cap outliers to upper limit",
+      "chosen_rationale": "Capping outliers helps maintain data integrity while limiting skewing effects on financial analytics.",
+      "chosen_caveats": "Assumes that all values above 38000 are erroneous and should be corrected.",
+      "chosen_confidence": 85,
+      "detail_summary": "35212 outlier(s) (1.6% of rows). IQR bounds: [-10000.00, 38000.00]"
+    },
+    {
+      "column": "int_rate",
+      "chosen_option": 1,
+      "chosen_action": "Cap outliers to upper limit",
+      "chosen_rationale": "Capping outliers helps maintain data integrity while limiting skewing effects on financial analytics.",
+      "chosen_caveats": "Assumes that all interest rates above 25.74 are erroneous and should be corrected.",
+      "chosen_confidence": 85,
+      "detail_summary": "41099 outlier(s) (1.8% of rows). IQR bounds: [-0.26, 25.74]"
+    }
+  ]
+}

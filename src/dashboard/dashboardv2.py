@@ -246,16 +246,16 @@ with tab1:
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0  
     #st.divider()
-    st.space("small")
+    st.write("")
     with st.container(border = True):
-        st.subheader("Data Summary", text_alignment = "center")
+        st.markdown("<h3 style='text-align: center;'>Data Summary</h3>", unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Issues Detected", len(issues))
         col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
         col3.metric("Avg Quality Score (Before)", f"{avg_before:.1f}%") 
         col4.metric("Estimated Quality Score (After)", f"{avg_after:.1f}%", f"{avg_delta:+.1f}%")
     #st.divider()
-    st.space("small")
+    st.write("")
     # ── Session state for decisions ──
     if "decisions" not in st.session_state:
         st.session_state.decisions = {}

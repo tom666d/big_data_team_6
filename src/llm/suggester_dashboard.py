@@ -7,26 +7,6 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
-# =========================
-# Path and environment setup
-# =========================
-project_root = Path(__file__).resolve().parents[2]
-load_dotenv(project_root / ".env")
-
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-input_path = project_root / "data" / "issues_output.json"
-output_path = project_root / "data" / "issues_with_suggestions.json"
-historical_path = project_root / "data" / "historical_decisions.json"
-df_shape_path = project_root / "data" / "df_shape.json"
-
-
-# =========================
-# Load detector output
-# =========================
-with open(input_path, "r", encoding="utf-8") as f:
-    issues = json.load(f)
-
 
 # =========================
 # Helper functions
@@ -34,12 +14,6 @@ with open(input_path, "r", encoding="utf-8") as f:
 def load_df_shape(path: Path) -> dict[str, int]:
     """
     Load dataframe shape metadata from JSON.
-
-    Expected format:
-    {
-        "total_rows": 100000,
-        "total_columns": 152
-    }
     """
     if not path.exists():
         raise FileNotFoundError(f"df_shape file not found: {path}")
@@ -62,24 +36,7 @@ def load_df_shape(path: Path) -> dict[str, int]:
     }
 
 
-df_shape = load_df_shape(df_shape_path)
-TOTAL_ROWS = df_shape["total_rows"]
-TOTAL_COLUMNS = df_shape["total_columns"]
-
-print(f"[FILE] Loaded {len(issues)} issue(s) from issues_output.json")
-print(f"[RULE] Loaded dataframe shape: rows={TOTAL_ROWS}, columns={TOTAL_COLUMNS}\n")
-
-
 def extract_affected_rows(detail: str) -> int | None:
-    """
-    Try to extract affected row count from issue detail text.
-
-    Supported patterns:
-    1. 'Null rate: 40% (4/10 rows)' -> 4
-    2. '1 outlier(s) detected ...' -> 1
-    3. 'Mixed formats: 7 rows as YYYY-MM-DD, 3 rows as MM/DD/YYYY' -> 3
-       (take the smaller inconsistent group as affected rows)
-    """
     if not detail:
         return None
 
@@ -100,13 +57,6 @@ def extract_affected_rows(detail: str) -> int | None:
 
 
 def extract_affected_rows_percent(detail: str) -> float | None:
-    """
-    Extract affected row percentage from issue detail text.
-
-    Supported patterns:
-    1. '35215 outlier(s) (1.6% of rows)' -> 1.6
-    2. 'Null rate: 40% (4/10 rows)' -> 40.0
-    """
     if not detail:
         return None
 
@@ -122,13 +72,6 @@ def extract_affected_rows_percent(detail: str) -> float | None:
 
 
 def compute_affected_rows_percent(detail: str, total_rows: int) -> float | None:
-    """
-    Compute affected row percentage.
-
-    Priority:
-    1. Use the percentage directly from detail text if available.
-    2. Otherwise, compute from affected row count / total_rows.
-    """
     percent_from_detail = extract_affected_rows_percent(detail)
     if percent_from_detail is not None:
         return round(percent_from_detail, 2)
@@ -141,9 +84,6 @@ def compute_affected_rows_percent(detail: str, total_rows: int) -> float | None:
 
 
 def severity_to_score(severity: str) -> int:
-    """
-    Map detector severity to a 1-10 style base score.
-    """
     severity_map = {
         "LOW": 3,
         "MEDIUM": 6,
@@ -153,9 +93,6 @@ def severity_to_score(severity: str) -> int:
 
 
 def affected_rows_percent_to_score(affected_rows_percent: float | None) -> int:
-    """
-    Convert affected row percentage to a 1-10 style score.
-    """
     if affected_rows_percent is None:
         return 5
     if affected_rows_percent < 5:
@@ -170,10 +107,6 @@ def affected_rows_percent_to_score(affected_rows_percent: float | None) -> int:
 
 
 def compute_priority_score(severity: str, affected_rows_percent: float | None) -> int:
-    """
-    Priority score = 0.6 * severity_score + 0.4 * affected_rows_percent_score.
-    Final score is rounded and clipped to 1-10.
-    """
     severity_score = severity_to_score(severity)
     affected_score = affected_rows_percent_to_score(affected_rows_percent)
 
@@ -182,21 +115,10 @@ def compute_priority_score(severity: str, affected_rows_percent: float | None) -
     return weighted_score
 
 
-# =========================
-# Week 2: Data Quality Score
-# =========================
 def compute_total_affected_rows(
     issues_list: list[dict[str, Any]],
     total_rows: int
 ) -> int:
-    """
-    Estimate total affected rows across all issues by summing affected row percentages.
-
-    Note:
-    - This is a simplified approximation.
-    - Different issues may overlap on the same rows, so this can overcount.
-    - The final percentage is capped at 100%.
-    """
     total_affected_percent = 0.0
 
     for issue in issues_list:
@@ -215,22 +137,6 @@ def compute_quality_scores_for_issue(
     issues_list: list[dict[str, Any]],
     total_rows: int
 ) -> dict[str, float]:
-    """
-    Row-based quality score logic.
-
-    before:
-    - overall row quality before fixing the current issue
-
-    after:
-    - overall row quality after assuming the current issue is fully resolved
-
-    delta:
-    - improvement contributed by fixing the current issue
-
-    Note:
-    - This uses affected_rows_percent as the common unit.
-    - The total affected percent is capped at 100%.
-    """
     total_affected_rows_before = compute_total_affected_rows(issues_list, total_rows)
 
     current_issue_percent = compute_affected_rows_percent(
@@ -255,9 +161,6 @@ def compute_quality_scores_for_issue(
     }
 
 
-# =========================
-# Week 2: Historical Feedback
-# =========================
 def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
     if not path.exists():
         return {}
@@ -269,7 +172,6 @@ def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
                 return {}
             data = json.loads(content)
 
-            
             if isinstance(data, list):
                 converted = {}
                 for record in data:
@@ -277,7 +179,6 @@ def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
                     converted.setdefault(itype, []).append(record)
                 return converted
 
-            
             if isinstance(data, dict):
                 return data
 
@@ -288,9 +189,6 @@ def load_historical_feedback(path: Path) -> dict[str, list[dict[str, Any]]]:
 
 
 def format_historical_context(issue_type: str, history: dict[str, list[dict[str, Any]]]) -> str:
-    """
-    Build short historical context for the current issue type only.
-    """
     records = history.get(issue_type, [])
     if not records:
         return "No historical decisions are available for this issue type."
@@ -308,14 +206,8 @@ def format_historical_context(issue_type: str, history: dict[str, list[dict[str,
 
     return "\n".join(lines)
 
-# =========================
-# Router Agent
-# =========================
+
 def route_issue(issue: dict[str, Any]) -> str:
-    """
-    Router: maps issue_type to a handling strategy.
-    Returns a strategy string passed to Agent 1 to sharpen the prompt.
-    """
     routing_map = {
         "Null Spike": "imputation",
         "Statistical Outlier": "statistical",
@@ -323,15 +215,11 @@ def route_issue(issue: dict[str, Any]) -> str:
     }
     return routing_map.get(issue.get("issue_type", ""), "general")
 
+
 # =========================
 # Agent 1: Root Cause only
 # =========================
-def diagnose_root_cause(issue: dict[str, Any]) -> dict[str, Any]:
-    """
-    Agent 1:
-    Use LLM to generate root_cause and business_impact.
-    Other diagnosis fields are computed by Python logic.
-    """
+def diagnose_root_cause(client, issue: dict[str, Any]) -> dict[str, Any]:
     prompt = f"""
 You are Agent 1 in a two-agent data quality remediation workflow.
 
@@ -383,13 +271,13 @@ Return exactly this format:
 # Agent 2: Remediation
 # =========================
 def generate_remediation(
+    client,
     issue: dict[str, Any],
     diagnosis: dict[str, Any],
     historical_context: str,
     critic_feedback: str = ""
 ) -> dict[str, Any]:
 
-    # Build critic feedback block BEFORE the prompt f-string
     critic_feedback_block = ""
     if critic_feedback:
         critic_feedback_block = f"""
@@ -521,28 +409,28 @@ Return exactly this format:
     )
 
     return json.loads(response.choices[0].message.content)
+
+
 # =========================
 # Critic Agent
 # =========================
 def critic_check(remediation: dict[str, Any]) -> tuple[bool, str]:
-    """
-    Critic: validates Agent 2 output against quality rules.
-    Returns (passed, feedback).
-    """
     suggestions = remediation.get("suggestions", [])
 
     if len(suggestions) != 3:
         return False, f"Expected 3 suggestions, got {len(suggestions)}"
 
     for s in suggestions:
-        if not s.get("pyspark_code") or s["pyspark_code"].strip() == "":
-            return False, f"Option {s['option']} missing pyspark_code"
-        if s.get("option") != 3 and "df" not in s.get("pyspark_code", ""):
-            return False, f"Option {s['option']} pyspark_code does not reference 'df'"
-        if not isinstance(s.get("confidence"), int):
-            return False, f"Option {s['option']} confidence must be an integer"
+        option_num = s.get("option", "?")
 
-    option3 = next((s for s in suggestions if s["option"] == 3), None)
+        if not s.get("pyspark_code") or s["pyspark_code"].strip() == "":
+            return False, f"Option {option_num} missing pyspark_code"
+        if s.get("option") != 3 and "df" not in s.get("pyspark_code", ""):
+            return False, f"Option {option_num} pyspark_code does not reference 'df'"
+        if not isinstance(s.get("confidence"), int):
+            return False, f"Option {option_num} confidence must be an integer"
+
+    option3 = next((s for s in suggestions if s.get("option") == 3), None)
     if not option3 or option3.get("action") != "Decline changes":
         return False, "Option 3 must be 'Decline changes'"
 
@@ -550,18 +438,21 @@ def critic_check(remediation: dict[str, Any]) -> tuple[bool, str]:
 
 
 def generate_remediation_with_critic(
+    client,
     issue: dict[str, Any],
     diagnosis: dict[str, Any],
     historical_context: str,
     max_retries: int = 2
 ) -> dict[str, Any]:
-    """
-    Agent 2 + Critic loop: retries up to max_retries times if quality check fails.
-    """
     feedback = ""
 
     for attempt in range(max_retries + 1):
-        result = generate_remediation(issue, diagnosis, historical_context, feedback)
+        result = generate_remediation(client, issue, diagnosis, historical_context, feedback)
+
+        suggestions = result.get("suggestions", [])
+        for idx, s in enumerate(suggestions, start=1):
+            s["option"] = s.get("option", idx)
+
         passed, feedback = critic_check(result)
 
         if passed:
@@ -573,6 +464,7 @@ def generate_remediation_with_critic(
 
     print(f"  Critic: max retries reached, returning last result")
     return result
+
 
 # =========================
 # Build layered output
@@ -605,78 +497,115 @@ def build_output_record(
 
 
 # =========================
-# Main pipeline
+# Main callable pipeline
 # =========================
-print("[AI] Running Week 2 Agent pipeline...\n")
+def run_suggester():
+    # Path and environment setup
+    project_root = Path(__file__).resolve().parents[2]
+    load_dotenv(project_root / ".env")
 
-historical_feedback = load_historical_feedback(historical_path)
-results = []
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not set")
 
-for issue in issues:
-    print(f"Processing: [{issue['severity']}] {issue['column']} — {issue['issue_type']}")
+    client = openai.OpenAI(api_key=api_key)
 
-    # Router
-    strategy = route_issue(issue)
-    print(f"  Router -> strategy: {strategy}")
+    LOCAL_MODE = not os.path.exists("/dbfs")
 
-    # Agent 1: root cause from LLM
-    root_cause_result = diagnose_root_cause(issue)
+    if LOCAL_MODE:
+        data_dir = project_root / "data"
+    else:
+        data_dir = Path("/Volumes/workspace/team6/data")
 
-    # Deterministic diagnosis fields
-    affected_rows_percent = compute_affected_rows_percent(issue.get("detail", ""), TOTAL_ROWS)
-    priority_score = compute_priority_score(issue.get("severity", ""), affected_rows_percent)
+    input_path = data_dir / "issues_output.json"
+    output_path = data_dir / "issues_with_suggestions.json"
+    historical_path = data_dir / "historical_decisions.json"
+    df_shape_path = data_dir / "df_shape.json"
 
-    diagnosis_result = {
-        "root_cause": root_cause_result.get("root_cause"),
-        "business_impact": root_cause_result.get("business_impact"),
-        "priority_score": priority_score,
-        "affected_rows_percent": affected_rows_percent
-    }
+    if not input_path.exists():
+        raise FileNotFoundError(f"issues_output.json not found: {input_path}")
 
-    print(
-        f"  Agent 1 done -> priority_score={diagnosis_result['priority_score']}, "
-        f"affected_rows_percent={diagnosis_result['affected_rows_percent']}"
+    with open(input_path, "r", encoding="utf-8") as f:
+        issues = json.load(f)
+
+    df_shape = load_df_shape(df_shape_path)
+    TOTAL_ROWS = df_shape["total_rows"]
+    TOTAL_COLUMNS = df_shape["total_columns"]
+
+    print(f"[FILE] Loaded {len(issues)} issue(s) from issues_output.json")
+    print(f"[RULE] Loaded dataframe shape: rows={TOTAL_ROWS}, columns={TOTAL_COLUMNS}\n")
+    print("[AI] Running Week 2 Agent pipeline...\n")
+
+    historical_feedback = load_historical_feedback(historical_path)
+    results = []
+
+    for issue in issues:
+        print(f"Processing: [{issue['severity']}] {issue['column']} — {issue['issue_type']}")
+
+        strategy = route_issue(issue)
+        print(f"  Router -> strategy: {strategy}")
+
+        root_cause_result = diagnose_root_cause(client, issue)
+
+        affected_rows_percent = compute_affected_rows_percent(issue.get("detail", ""), TOTAL_ROWS)
+        priority_score = compute_priority_score(issue.get("severity", ""), affected_rows_percent)
+
+        diagnosis_result = {
+            "root_cause": root_cause_result.get("root_cause"),
+            "business_impact": root_cause_result.get("business_impact"),
+            "priority_score": priority_score,
+            "affected_rows_percent": affected_rows_percent
+        }
+
+        print(
+            f"  Agent 1 done -> priority_score={diagnosis_result['priority_score']}, "
+            f"affected_rows_percent={diagnosis_result['affected_rows_percent']}"
+        )
+
+        historical_context = format_historical_context(issue["issue_type"], historical_feedback)
+
+        remediation_result = generate_remediation_with_critic(
+            client,
+            issue,
+            diagnosis_result,
+            historical_context
+        )
+        print(f"  Agent 2 done -> generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
+
+        quality_score_result = compute_quality_scores_for_issue(
+            issue,
+            issues,
+            TOTAL_ROWS
+        )
+        print(
+            f"  Quality score -> before={quality_score_result['before']}, "
+            f"after={quality_score_result['after']}, "
+            f"delta={quality_score_result['delta']}"
+        )
+
+        output_record = build_output_record(
+            issue=issue,
+            diagnosis=diagnosis_result,
+            remediation=remediation_result,
+            quality_score=quality_score_result
+        )
+        results.append(output_record)
+
+        print()
+
+    results = sorted(
+        results,
+        key=lambda x: x["diagnosis"]["priority_score"],
+        reverse=True
     )
 
-    # Historical context for Agent 2
-    historical_context = format_historical_context(issue["issue_type"], historical_feedback)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
 
-    # Agent 2 + Critic
-    remediation_result = generate_remediation_with_critic(issue, diagnosis_result, historical_context)
-    print(f"  Agent 2 done -> generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
+    print("[OK] issues_with_suggestions.json saved")
+    return results
 
-    # Week 2 quality score
-    quality_score_result = compute_quality_scores_for_issue(
-        issue,
-        issues,
-        TOTAL_ROWS
-    )
-    print(
-        f"  Quality score -> before={quality_score_result['before']}, "
-        f"after={quality_score_result['after']}, "
-        f"delta={quality_score_result['delta']}"
-    )
 
-    # Save output record
-    output_record = build_output_record(
-        issue=issue,
-        diagnosis=diagnosis_result,
-        remediation=remediation_result,
-        quality_score=quality_score_result
-    )
-    results.append(output_record)
-
-    print()
-
-# Sort by priority_score descending
-results = sorted(
-    results,
-    key=lambda x: x["diagnosis"]["priority_score"],
-    reverse=True
-)
-
-# Save final JSON output
-with open(output_path, "w", encoding="utf-8") as f:
-    json.dump(results, f, indent=2, ensure_ascii=False)
-
-print("[OK] issues_with_suggestions.json saved")
+if __name__ == "__main__":
+    run_suggester()

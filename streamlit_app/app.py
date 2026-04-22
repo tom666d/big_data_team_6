@@ -178,14 +178,6 @@ def inject_demo_anomalies():
 
 
 def get_detector_source(demo: bool, uploaded_path: Path | None):
-    if uploaded_path is not None:
-        return "file", str(uploaded_path)
-
-    if LOCAL_MODE:
-        if demo:
-            return "file", str(LOCAL_DEMO_DATA_PATH)
-        return "table", FULL_TABLE
-
     if demo:
         return "table", DEMO_TABLE
     return "table", FULL_TABLE

@@ -210,42 +210,26 @@ def compute_total_affected_rows(
     return total_affected_rows
 
 
-def compute_quality_scores_for_issue(
-    current_issue: dict[str, Any],
+def compute_quality_score(
     issues_list: list[dict[str, Any]],
     total_rows: int
 ) -> dict[str, float]:
     """
-    Row-based quality score logic.
+    Compute one overall quality score for the whole dataset.
 
-    before:
-    - overall row quality before fixing the current issue
-
-    after:
-    - overall row quality after assuming the current issue is fully resolved
-
-    delta:
-    - improvement contributed by fixing the current issue
-
-    Note:
-    - This uses affected_rows_percent as the common unit.
-    - The total affected percent is capped at 100%.
+    Logic:
+    - Sum affected row percentages across all detected issues
+    - Cap total affected percent at 100%
+    - before = percentage of unaffected rows before remediation
+    - after = 100, assuming all detected issues are fully resolved
+    - delta = after - before
     """
-    total_affected_rows_before = compute_total_affected_rows(issues_list, total_rows)
+    total_affected_rows = compute_total_affected_rows(issues_list, total_rows)
 
-    current_issue_percent = compute_affected_rows_percent(
-        current_issue.get("detail", ""),
-        total_rows
-    ) or 0.0
-    current_issue_affected_rows = round((current_issue_percent / 100) * total_rows)
-
-    affected_rows_after = max(0, total_affected_rows_before - current_issue_affected_rows)
-
-    good_rows_before = total_rows - total_affected_rows_before
-    good_rows_after = total_rows - affected_rows_after
+    good_rows_before = max(0, total_rows - total_affected_rows)
 
     before = round((good_rows_before / total_rows) * 100, 2) if total_rows > 0 else 0.0
-    after = round((good_rows_after / total_rows) * 100, 2) if total_rows > 0 else 0.0
+    after = 100.0
     delta = round(after - before, 2)
 
     return {
@@ -498,8 +482,7 @@ Return exactly this format:
 def build_output_record(
     issue: dict[str, Any],
     diagnosis: dict[str, Any],
-    remediation: dict[str, Any],
-    quality_score: dict[str, float]
+    remediation: dict[str, Any]
 ) -> dict[str, Any]:
     return {
         "input": {
@@ -517,8 +500,7 @@ def build_output_record(
         },
         "remediation": {
             "suggestions": remediation.get("suggestions", [])
-        },
-        "quality_score": quality_score
+        }
     }
 
 
@@ -528,6 +510,15 @@ def build_output_record(
 print("🤖 Running Week 2 Agent pipeline...\n")
 
 historical_feedback = load_historical_feedback(historical_path)
+quality_score = compute_quality_score(issues, TOTAL_ROWS)
+
+print(
+    "📊 Overall quality score → "
+    f"before={quality_score['before']}, "
+    f"after={quality_score['after']}, "
+    f"delta={quality_score['delta']}\n"
+)
+
 results = []
 
 for issue in issues:
@@ -559,24 +550,11 @@ for issue in issues:
     remediation_result = generate_remediation(issue, diagnosis_result, historical_context)
     print(f"  Agent 2 done → generated {len(remediation_result.get('suggestions', []))} suggestion(s)")
 
-    # Week 2 quality score
-    quality_score_result = compute_quality_scores_for_issue(
-        issue,
-        issues,
-        TOTAL_ROWS
-    )
-    print(
-        f"  Quality score → before={quality_score_result['before']}, "
-        f"after={quality_score_result['after']}, "
-        f"delta={quality_score_result['delta']}"
-    )
-
     # Save output record
     output_record = build_output_record(
         issue=issue,
         diagnosis=diagnosis_result,
-        remediation=remediation_result,
-        quality_score=quality_score_result
+        remediation=remediation_result
     )
     results.append(output_record)
 
@@ -590,7 +568,12 @@ results = sorted(
 )
 
 # Save final JSON output
+final_output = {
+    "quality_score": quality_score,
+    "issues": results
+}
+
 with open(output_path, "w", encoding="utf-8") as f:
-    json.dump(results, f, indent=2, ensure_ascii=False)
+    json.dump(final_output, f, indent=2, ensure_ascii=False)
 
 print("✅ issues_with_suggestions.json saved")

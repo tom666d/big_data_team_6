@@ -277,8 +277,8 @@ with tab1:
         with open(uploaded_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {uploaded_path}")
-    st.subheader("🧱 Set Databricks File Path (optional)")
-    TABLE_PATH = st.text_input("Enter live databricks table here:")
+    st.subheader("🧱 Set Path to Databricks Table (optional)")
+    TABLE_PATH = st.text_input("Enter live databricks table here: (ex: 'workspace.datagenie.lendingclub')")
 
     st.divider()
     st.subheader("⚙️ Run Pipeline")

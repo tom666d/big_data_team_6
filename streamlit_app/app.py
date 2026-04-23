@@ -46,6 +46,7 @@ LOCAL_DEMO_BACKUP_PATH = DATA_DIR / "demo_lendingclub_backup.csv"
 DEMO_TABLE = "workspace.team6.demo_lendingclub"
 FULL_TABLE = "workspace.team6.lendingclub_full"
 
+
 import detection.detector_dashboard as detector_dashboard
 import llm.suggester_dashboard as suggester_dashboard
 
@@ -187,8 +188,10 @@ def inject_demo_anomalies():
         ).saveAsTable(DEMO_TABLE)
 
 
-def get_detector_source(demo: bool, uploaded_path: Path | None):
-    if demo:
+def get_detector_source(TABLE_PATH, demo: bool, uploaded_path: Path | None):
+    if TABLE_PATH:
+        return "table", DEMO_TABLE
+    elif demo:
         return "table", DEMO_TABLE
     return "table", FULL_TABLE
 
@@ -263,25 +266,28 @@ with tab1:
         avg_delta = avg_after - avg_before
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0
-
+    uploaded_file = False
     # st.subheader("📁 Upload Data File")
     # uploaded_file = st.file_uploader(" ", type=["csv", "json", "parquet"])
 
     uploaded_path = None
-    uploaded_file = False
+    
     if uploaded_file:
         uploaded_path = UPLOAD_DIR / uploaded_file.name
         with open(uploaded_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {uploaded_path}")
+    st.subheader("🧱 Set Databricks File Path (optional)")
+    TABLE_PATH = st.text_input("Enter live databricks table here:")
 
-    # st.divider()
+    st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
 
     with col1:
         if st.button("Step 1: 🔎 Detect Anomalous Data", use_container_width=True):
-            detector_mode, detector_input = get_detector_source(demo, uploaded_path)
+
+            detector_mode, detector_input = get_detector_source(TABLE_PATH, demo, uploaded_path)
 
             if detector_mode == "file" and not Path(detector_input).exists():
                 st.warning("No file uploaded — toggle 'Use Demo Dataset' on, or upload a file first.")
@@ -341,7 +347,7 @@ with tab1:
     st.subheader("📋 Issues and Suggested Actions")
 
     for i, issue in enumerate(issues):
-        st.subheader(f"Issue #{i+1}")
+        st.subheader(f"Issue #{i+1} of {len(issues)}")
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 

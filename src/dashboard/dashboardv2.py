@@ -198,7 +198,8 @@ with tab1:
             st.write(f"### Option {num} )")
 
             print('hello')
-        
+    st.subheader("🧱 Set Databricks File Path (optional)")
+    TABLE_PATH = st.text_input("Enter live databricks table here:")
     st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)

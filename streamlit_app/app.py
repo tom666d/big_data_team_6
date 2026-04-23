@@ -381,7 +381,7 @@ with tab1:
                 option_no = s.get("option", "?")
                 confidence = s.get("confidence", "N/A")
                 st.markdown(f'<p class="big-font"> {s+1} !!</p>', unsafe_allow_html=True, text_alignment = 'center')
-                st.markdown(f'<p class="big-font"> Option {s['option']} (Confidence: {s['confidence']}%)</p>', unsafe_allow_html=True, text_alignment = 'center')
+                st.markdown(f"<p class='big-font'> Option {s['option']} (Confidence: {s['confidence']}%)</p>", unsafe_allow_html=True, text_alignment = 'center')
                 col_a, col_b = st.columns([3, 1])
                 with col_a:
                     st.info(f"**Action:** {s.get('action', 'N/A')}")

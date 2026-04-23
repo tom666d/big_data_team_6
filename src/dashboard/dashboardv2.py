@@ -170,8 +170,9 @@ with tab1:
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0
 
-    st.subheader("📁 Upload Data File")
-    uploaded_file = st.file_uploader(" ",type=["csv", "json", "parquet"])
+    # st.subheader("📁 Upload Data File")
+    # uploaded_file = st.file_uploader(" ",type=["csv", "json", "parquet"])
+    uploaded_file = False
 
     if uploaded_file:
         # Save to the expected location
@@ -181,7 +182,7 @@ with tab1:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {save_path}")
         
-    st.divider()
+    #st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
     with col1:

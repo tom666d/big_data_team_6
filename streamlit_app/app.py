@@ -53,7 +53,7 @@ import llm.suggester_dashboard as suggester_dashboard
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Data Quality Remediation Assistant",
-    page_icon="🔍",
+    page_icon="src/streamlit_assets/magiclamp.png",
     layout="wide",
 )
 
@@ -82,7 +82,13 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
+st.markdown("""
+        <style>
+        .big-font {
+            font-size:25px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def safe_image(path: Path, **kwargs) -> None:
@@ -331,7 +337,7 @@ with tab1:
     st.subheader("📋 Issues and Suggested Actions")
 
     for i, issue in enumerate(issues):
-        st.subheader(f"Issue #{i}")
+        st.subheader(f"Issue #{i+1}")
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 
@@ -370,7 +376,7 @@ with tab1:
             for s in issue["remediation"]["suggestions"]:
                 option_no = s.get("option", "?")
                 confidence = s.get("confidence", "N/A")
-                
+                st.markdown(f'<p class="big-font"> Option {s['option']} (Confidence: {s['confidence']}%)</p>', unsafe_allow_html=True, text_alignment = 'center')
                 col_a, col_b = st.columns([3, 1])
                 with col_a:
                     st.info(f"**Action:** {s.get('action', 'N/A')}")

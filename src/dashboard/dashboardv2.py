@@ -43,7 +43,7 @@ st.markdown("""
 st.markdown("""
         <style>
         .big-font {
-            font-size:100px ;
+            font-size:25px !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -194,7 +194,7 @@ with tab1:
     for num in a:
         st.subheader(f'Issue # {num}')
         with st.expander(f'{num}'):
-            st.markdown(f'<p class="big-font">{num} !!</p>', unsafe_allow_html=True)
+            st.markdown(f'<p class="big-font"> {num} !!</p>', unsafe_allow_html=True, text_alignment = 'center')
             st.write(f"### Option {num} )")
 
             print('hello')

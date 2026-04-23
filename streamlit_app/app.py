@@ -278,7 +278,7 @@ with tab1:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {uploaded_path}")
     st.subheader("🧱 Set Path to Databricks Table (optional)")
-    TABLE_PATH = st.text_input("Enter live databricks table here: (ex: 'workspace.datagenie.lendingclub')")
+    TABLE_PATH = st.text_input("Enter live databricks table here (ex: workspace.datagenie.lendingclub):")
 
     st.divider()
     st.subheader("⚙️ Run Pipeline")
@@ -324,8 +324,8 @@ with tab1:
             issues = json.load(f)
 
     if issues:
-        avg_before = max(0, sum(i["quality_score"]["before"] for i in issues) / len(issues))
-        avg_after = min(95.0, max(0, sum(i["quality_score"]["after"] for i in issues) / len(issues)))
+        avg_before = max(0, (i["quality_score"]["before"] for i in issues))
+        avg_after = min(95.0, max(0, sum(i["quality_score"]["after"] for i in issues)))
         avg_delta = avg_after - avg_before
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0
@@ -351,7 +351,7 @@ with tab1:
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 
-        with st.expander(f"{color} [P{priority}] {issue['input']['column']} — {issue['input']['issue_type']}", expanded=True):
+        with st.expander(f"{color} [P{priority}] {issue['input']['column']} — {issue['input']['issue_type']}", expanded=False):
             col_info1, col_info2 = st.columns(2)
 
             with col_info1:

@@ -254,8 +254,8 @@ with tab1:
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0
 
-    st.subheader("📁 Upload Data File")
-    uploaded_file = st.file_uploader(" ", type=["csv", "json", "parquet"])
+    # st.subheader("📁 Upload Data File")
+    # uploaded_file = st.file_uploader(" ", type=["csv", "json", "parquet"])
 
     uploaded_path = None
     if uploaded_file:
@@ -264,7 +264,7 @@ with tab1:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {uploaded_path}")
 
-    st.divider()
+    # st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
 
@@ -330,6 +330,7 @@ with tab1:
     st.subheader("📋 Issues and Suggested Actions")
 
     for i, issue in enumerate(issues):
+        st.subheader("Issue #{i}")
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 

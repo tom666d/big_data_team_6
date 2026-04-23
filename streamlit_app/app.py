@@ -324,8 +324,8 @@ with tab1:
             issues = json.load(f)
 
     if issues:
-        avg_before = max(0, (i["quality_score"]["before"] for i in issues))
-        avg_after = min(95.0, max(0, sum(i["quality_score"]["after"] for i in issues)))
+        avg_before = max(0, max(i["quality_score"]["before"] for i in issues))
+        avg_after = min(95.0, max(0, max(i["quality_score"]["after"] for i in issues)))
         avg_delta = avg_after - avg_before
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0

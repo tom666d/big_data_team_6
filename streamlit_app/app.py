@@ -287,23 +287,26 @@ with tab1:
 
     with col1:
         if st.button("Step 1: 🔎 Detect Anomalous Data", use_container_width=True):
-
             detector_mode, detector_input = get_detector_source(TABLE_PATH, demo, uploaded_path)
-
-            if detector_mode == "file" and not Path(detector_input).exists():
-                st.warning("No file uploaded — toggle 'Use Demo Dataset' on, or upload a file first.")
-                st.stop()
-
             with st.spinner("Running detector..."):
                 progress = st.progress(0)
-                try:
-                    importlib.reload(detector_dashboard)
-                    progress.progress(20)
-                    result = detector_dashboard.run_detector(detector_mode, detector_input)
+                import subprocess
+                cmd = ["python", "src/detection/detector_dashboard.py",
+                       detector_mode, str(detector_input)]
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE, text=True)
+                lines = []
+                for line in process.stdout:
+                    lines.append(line)
+                    progress.progress(min(90, len(lines) * 5))
+                process.wait()
+                if process.returncode == 0:
                     progress.progress(100)
                     st.success("Detector finished!")
-                except Exception as e:
-                    st.error(f"Detector failed: {e}")
+                    st.rerun()
+                else:
+                    err = process.stderr.read()
+                    st.error(f"Detector failed: {err}")
                     progress.empty()
 
     with col2:
@@ -336,7 +339,12 @@ with tab1:
     with st.container(border=True):
         st.markdown("<h3 style='text-align: center;'>Data Summary</h3>", unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Issues Detected", len(issues))
+        if not issues and ISSUES_OUTPUT_PATH.exists():
+            raw_issues = load_json(ISSUES_OUTPUT_PATH, [])
+            detected_count = len(raw_issues)
+        else:
+            detected_count = len(issues)
+        col1.metric("Issues Detected", detected_count)
         col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
         col3.metric("Avg Quality Score (Before)", f"{avg_before:.1f}%")
         col4.metric("Estimated Quality Score (After)", f"{avg_after:.1f}%", f"{avg_delta:+.1f}%")

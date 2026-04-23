@@ -258,6 +258,7 @@ with tab1:
     # uploaded_file = st.file_uploader(" ", type=["csv", "json", "parquet"])
 
     uploaded_path = None
+    uploaded_file = False
     if uploaded_file:
         uploaded_path = UPLOAD_DIR / uploaded_file.name
         with open(uploaded_path, "wb") as f:
@@ -330,7 +331,7 @@ with tab1:
     st.subheader("📋 Issues and Suggested Actions")
 
     for i, issue in enumerate(issues):
-        st.subheader("Issue #{i}")
+        st.subheader(f"Issue #{i}")
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 
@@ -369,9 +370,7 @@ with tab1:
             for s in issue["remediation"]["suggestions"]:
                 option_no = s.get("option", "?")
                 confidence = s.get("confidence", "N/A")
-
-                st.write(f"### Option {option_no} (Confidence: {confidence}%)")
-
+                
                 col_a, col_b = st.columns([3, 1])
                 with col_a:
                     st.info(f"**Action:** {s.get('action', 'N/A')}")

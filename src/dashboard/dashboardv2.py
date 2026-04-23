@@ -40,6 +40,13 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+        <style>
+        .big-font {
+            font-size:100px ;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
 # ── [UPDATE] [FEEDBACK LOOP] Write decision to JSON ───
 def save_decision_to_history(issue, selected_option, action_type="Approved"):
@@ -170,8 +177,8 @@ with tab1:
     else:
         avg_before, avg_after, avg_delta = 0, 0, 0
 
-    # st.subheader("📁 Upload Data File")
-    # uploaded_file = st.file_uploader(" ",type=["csv", "json", "parquet"])
+    st.subheader("📁 Upload Data File")
+    uploaded_file = st.file_uploader(" ",type=["csv", "json", "parquet"])
     uploaded_file = False
 
     if uploaded_file:
@@ -181,8 +188,18 @@ with tab1:
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success(f"Saved to {save_path}")
+    st.subheader("📋 Issues and Suggested Actions")
+    a = [1,2,3,4]
+
+    for num in a:
+        st.subheader(f'Issue # {num}')
+        with st.expander(f'{num}'):
+            st.markdown(f'<p class="big-font">{num} !!</p>', unsafe_allow_html=True)
+            st.write(f"### Option {num} )")
+
+            print('hello')
         
-    #st.divider()
+    st.divider()
     st.subheader("⚙️ Run Pipeline")
     col1, col2 = st.columns(2)
     with col1:

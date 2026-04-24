@@ -377,6 +377,9 @@ with tab1:
                         <div style="color:#000000; font-size:0.85rem; margin-bottom:4px;">
                             Business Risk: <strong>{impact.get('business_impact', 'N/A')}</strong>
                         </div>
+                        <div style="color:#000000; font-size:0.85rem; margin-bottom:4px;">
+                            Root Cause: <strong>{impact.get('root_cause', 'N/A')}</strong>
+                        </div>
                         <div style="color:#000000; font-size:0.85rem;">
                             Affected Rows:
                             <strong>{impact.get('affected_rows_percent', 'N/A')}%</strong>

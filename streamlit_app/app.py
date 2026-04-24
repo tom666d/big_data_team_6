@@ -336,10 +336,12 @@ with tab1:
         if not issues and ISSUES_OUTPUT_PATH.exists():
             raw_issues = load_json(ISSUES_OUTPUT_PATH, [])
             detected_count = len(raw_issues)
+            high_count = sum(1 for i in raw_issues if i.get("severity") == "HIGH")
         else:
             detected_count = len(issues)
+            high_count = sum(1 for i in issues if i["input"]["severity"] == "HIGH")
         col1.metric("Issues Detected", detected_count)
-        col2.metric("High Severity", sum(1 for i in issues if i["input"]["severity"] == "HIGH"))
+        col2.metric("High Severity", high_count)
         col3.metric("Avg Quality Score (Before)", f"{avg_before:.1f}%")
         col4.metric("Estimated Quality Score (After)", f"{avg_after:.1f}%", f"{avg_delta:+.1f}%")
 

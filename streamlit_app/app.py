@@ -357,7 +357,7 @@ with tab1:
         color = "🔴" if issue["input"]["severity"] == "HIGH" else "🟡"
         priority = issue.get("diagnosis", {}).get("priority_score", "N/A")
 
-        with st.expander(f"{color} [P{priority}] {issue['input']['column']} — {issue['input']['issue_type']}", expanded=False):
+        with st.expander(f"{color} {issue['input']['column']} — {issue['input']['issue_type']} | Priority: {priority}/10 | Severity: {issue['input']['severity']}", expanded=False):
             col_info1, col_info2 = st.columns(2)
 
             with col_info1:

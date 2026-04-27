@@ -35,8 +35,4 @@ approves all suggestions through an interactive Streamlit dashboard.
 - Streamlit
 - Delta Lake / Snowflake
 
-## Setup Instructions
-coming soon
 
-## Project Flyer
-coming soon
